@@ -1,9 +1,13 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-const { Pool } = require("pg"); // Déclaration en haut
+const { Pool } = require("pg"); // Assurez-vous que cette ligne n'apparaît qu'une seule fois
 
-const { Pool } = require("pg");
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+console.log("Tentative de connexion à la base de données...");
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -28,11 +32,6 @@ async function testDB() {
 
 testDB();
 
-const app = express();
-app.use(cors());
-app.use(express.json());
-
-// Route de test
 app.get("/", async (req, res) => {
   res.send("🚀 API backend en ligne !");
 });
