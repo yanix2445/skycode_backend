@@ -10,6 +10,9 @@ app.use(express.json());
 app.get("/", async (req, res) => {
   res.send("🚀 API backend en ligne !");
 });
+app.get("/test", async (req, res) => {
+  res.send("🚀 API backend en ligne rout /test !");
+});
 
 const { Pool } = require("pg");
 
@@ -21,20 +24,6 @@ const pool = new Pool({
     require: true,
     rejectUnauthorized: false,
   },
-});
-
-app.get("/db-test", async (req, res) => {
-  try {
-    console.log("Tentative de connexion à la base de données..");
-    const client = await pool.connect();
-    console.log("Connexion réussie !");
-    const result = await client.query("SELECT NOW()"); // Test connexion DB
-    client.release();
-    res.json({ success: true, timestamp: result.rows[0] });
-  } catch (err) {
-    console.error("Erreur de connexion :", err);
-    res.status(500).json({ error: err.message });
-  }
 });
 
 const PORT = process.env.PORT || 3000;
