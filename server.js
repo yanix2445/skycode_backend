@@ -10,7 +10,10 @@ app.use(express.json());
 // Connexion à la base de données Supabase
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }, // Nécessaire pour Railway
+  ssl: {
+    require: true,
+    rejectUnauthorized: false,
+  },
 });
 
 // Route de test
