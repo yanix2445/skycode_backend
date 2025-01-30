@@ -21,11 +21,13 @@ app.get("/", async (req, res) => {
 // Route pour tester la connexion à la base de données
 app.get("/db-test", async (req, res) => {
   try {
-    const result = await pool.query("SELECT NOW()");
+    const client = await pool.connect();
+    const result = await client.query("SELECT NOW()"); // Test connexion DB
+    client.release();
     res.json({ success: true, timestamp: result.rows[0] });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ error: err.message });
   }
 });
 
