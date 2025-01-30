@@ -35,6 +35,21 @@ const pool = new Pool({
   },
 });
 
+async function testDB() {
+  try {
+    console.log("Connexion en cours...");
+    const client = await pool.connect();
+    console.log("Connexion réussie !");
+    const result = await client.query("SELECT NOW()");
+    console.log("Résultat :", result.rows[0]);
+    client.release();
+  } catch (error) {
+    console.error("Erreur de connexion :", error);
+  }
+}
+
+testDB();
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`✅ Serveur en cours d'exécution sur le port ${PORT}`);
