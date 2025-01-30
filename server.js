@@ -7,7 +7,15 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Connexion à la base de données Supabase
+// Route de test
+app.get("/", async (req, res) => {
+  res.send("🚀 API backend en ligne !");
+});
+
+const { Pool } = require("pg");
+
+console.log("Tentative de connexion à la base de données...");
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
@@ -16,9 +24,18 @@ const pool = new Pool({
   },
 });
 
-// Route de test
-app.get("/", async (req, res) => {
-  res.send("🚀 API backend en ligne !");
+app.get("/db-test", async (req, res) => {
+  try {
+    console.log("Connexion en cours...");
+    const client = await pool.connect();
+    console.log("Connexion réussie !");
+    const result = await client.query("SELECT NOW()");
+    client.release();
+    res.json({ success: true, timestamp: result.rows[0] });
+  } catch (err) {
+    console.error("Erreur de connexion :", err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.get("/db-test", async (req, res) => {
