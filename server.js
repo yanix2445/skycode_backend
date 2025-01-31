@@ -1,13 +1,9 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-const { Pool } = require("pg"); // Assurez-vous que cette ligne n'apparaît qu'une seule fois
+const { Pool } = require("pg");
 
-const app = express();
-app.use(cors());
-app.use(express.json());
-
-console.log("Tentative de connexion à la base de données...");
+console.log("🚀 Tentative de connexion...");
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -17,33 +13,30 @@ const pool = new Pool({
   },
 });
 
-async function testDB() {
-  try {
-    console.log("Connexion en cours...");
-    const client = await pool.connect();
-    console.log("Connexion réussie !");
-    const result = await client.query("SELECT NOW()");
-    console.log("Résultat :", result.rows[0]);
-    client.release();
-  } catch (error) {
-    console.error("Erreur de connexion :", error);
-  }
-}
+const app = express();
+app.use(cors());
+app.use(express.json()); // 🔥 Assure-toi que JSON est bien activé
 
-testDB();
-
-app.get("/", async (req, res) => {
-  res.send("🚀 API backend en ligne !");
-});
-
-app.get("/test", async (req, res) => {
-  res.send("🚀 API backend en ligne route /test !");
-});
-
+// Route GET pour voir tous les utilisateurs
 app.get("/users", async (req, res) => {
   try {
     const result = await pool.query("SELECT * FROM users");
     res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Route POST pour ajouter un utilisateur
+app.post("/users", async (req, res) => {
+  try {
+    const { name, email } = req.body;
+    const result = await pool.query(
+      "INSERT INTO users (name, email) VALUES ($1, $2) RETURNING *",
+      [name, email]
+    );
+    res.json(result.rows[0]);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
