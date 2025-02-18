@@ -34,31 +34,58 @@ app.get("/db-test", async (req, res) => {
   }
 });
 
-// Route GET pour voir tous les utilisateurs
-app.get("/users", async (req, res) => {
+app.post("/users", async (req, res) => {
   try {
-    const result = await pool.query("SELECT * FROM users");
-    res.json(result.rows);
+      const { name, email } = req.body; // 🔥 Récupère `name` et `email` envoyés par le client
+      const result = await pool.query(
+          "INSERT INTO users (name, email) VALUES ($1, $2) RETURNING *",
+          [name, email]
+      ); // 🔥 Ajoute un nouvel utilisateur dans la base
+      res.json(result.rows[0]); // 🔥 Renvoie l'utilisateur créé
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
+      console.error(err);
+      res.status(500).json({ error: err.message });
   }
 });
 
-// Route POST pour ajouter un utilisateur
-app.post("/users", async (req, res) => {
+app.put("/users/:id", async (req, res) => {
   try {
-    const { name, email } = req.body;
-    const result = await pool.query(
-      "INSERT INTO users (name, email) VALUES ($1, $2) RETURNING *",
-      [name, email]
-    );
-    res.json(result.rows[0]);
+      const { id } = req.params;
+      const { name, email } = req.body;
+
+      const checkUser = await pool.query("SELECT * FROM users WHERE id = $1", [id]);
+      if (checkUser.rows.length === 0) {
+          return res.status(404).json({ error: "Utilisateur non trouvé" });
+      }
+
+      const result = await pool.query(
+          "UPDATE users SET name = $1, email = $2 WHERE id = $3 RETURNING *",
+          [name, email, id]
+      );
+      res.json(result.rows[0]);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
+      console.error(err);
+      res.status(500).json({ error: err.message });
   }
 });
+
+app.delete("/users/:id", async (req, res) => {
+  try {
+      const { id } = req.params;
+
+      const checkUser = await pool.query("SELECT * FROM users WHERE id = $1", [id]);
+      if (checkUser.rows.length === 0) {
+          return res.status(404).json({ error: "Utilisateur non trouvé" });
+      }
+
+      await pool.query("DELETE FROM users WHERE id = $1", [id]);
+      res.json({ message: "Utilisateur supprimé avec succès" });
+  } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: err.message });
+  }
+});
+
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
