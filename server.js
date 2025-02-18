@@ -17,6 +17,10 @@ const app = express();
 app.use(cors());
 app.use(express.json()); // 🔥 Assure-toi que JSON est bien activé
 
+app.get("/", async (req, res) => {
+  res.send("🚀 API backend en ligne !");
+});
+
 // Route GET pour voir tous les utilisateurs
 app.get("/users", async (req, res) => {
   try {
