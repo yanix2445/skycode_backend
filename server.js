@@ -21,6 +21,19 @@ app.get("/", async (req, res) => {
   res.send("🚀 API backend en ligne !");
 });
 
+// Vérifier la connexion à la base de données
+app.get("/db-test", async (req, res) => {
+  try {
+    const client = await pool.connect();
+    const result = await client.query("SELECT NOW()");
+    client.release();
+    res.json({ status: "✅ Connexion réussie", timestamp: result.rows[0] });
+  } catch (err) {
+    console.error("❌ Erreur de connexion :", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Route GET pour voir tous les utilisateurs
 app.get("/users", async (req, res) => {
   try {
