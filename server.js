@@ -163,7 +163,133 @@ app.get("/admin/users", authenticateToken, isAdmin, async (req, res) => {
   }
 });
 
+app.put("/update-profile", authenticateToken, async (req, res) => {
+  try {
+      const { name, email, password } = req.body;
+      const userId = req.user.id; // Récupération de l'ID du user connecté
 
+      console.log(`✏️ Mise à jour du profil pour l'utilisateur ID: ${userId}`);
+
+      // Vérifier si l'utilisateur existe
+      const user = await pool.query("SELECT * FROM users WHERE id = $1", [userId]);
+      if (user.rows.length === 0) {
+          return res.status(404).json({ error: "Utilisateur introuvable" });
+      }
+
+      let hashedPassword = user.rows[0].password;
+      if (password) {
+          hashedPassword = await bcrypt.hash(password, 10);
+      }
+
+      // Mettre à jour l'utilisateur
+      const result = await pool.query(
+          "UPDATE users SET name = $1, email = $2, password = $3 WHERE id = $4 RETURNING id, name, email",
+          [name || user.rows[0].name, email || user.rows[0].email, hashedPassword, userId]
+      );
+
+      console.log(`✅ Profil mis à jour avec succès pour ID: ${userId}`);
+
+      res.json({ message: "Profil mis à jour avec succès", user: result.rows[0] });
+  } catch (err) {
+      console.error("❌ Erreur lors de la mise à jour du profil :", err);
+      res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete("/delete-account", authenticateToken, async (req, res) => {
+  try {
+      const userId = req.user.id;
+
+      console.log(`🗑️ Suppression du compte ID: ${userId}`);
+
+      // Vérifier si l'utilisateur existe
+      const user = await pool.query("SELECT * FROM users WHERE id = $1", [userId]);
+      if (user.rows.length === 0) {
+          return res.status(404).json({ error: "Utilisateur introuvable" });
+      }
+
+      // Supprimer l'utilisateur en base
+      await pool.query("DELETE FROM users WHERE id = $1", [userId]);
+
+      console.log(`✅ Compte supprimé avec succès ID: ${userId}`);
+
+      res.json({ message: "Compte supprimé avec succès" });
+  } catch (err) {
+      console.error("❌ Erreur lors de la suppression du compte :", err);
+      res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/users/:id", authenticateToken, isAdmin, async (req, res) => {
+  try {
+      const { id } = req.params;
+
+      console.log(`🔍 Recherche de l'utilisateur ID: ${id}`);
+
+      const user = await pool.query("SELECT id, name, email, role FROM users WHERE id = $1", [id]);
+
+      if (user.rows.length === 0) {
+          return res.status(404).json({ error: "Utilisateur introuvable" });
+      }
+
+      res.json(user.rows[0]);
+  } catch (err) {
+      console.error("❌ Erreur lors de la récupération de l'utilisateur :", err);
+      res.status(500).json({ error: err.message });
+  }
+});
+
+// 🔄 Modification d'un utilisateur (admin uniquement)
+app.put("/users/:id", authenticateToken, isAdmin, async (req, res) => {
+  try {
+      const { id } = req.params;
+      const { name, email, role } = req.body;
+
+      console.log(`✏️ Mise à jour de l'utilisateur ID: ${id}`);
+
+      // Vérifier si l'utilisateur existe
+      const user = await pool.query("SELECT * FROM users WHERE id = $1", [id]);
+      if (user.rows.length === 0) {
+          return res.status(404).json({ error: "Utilisateur introuvable" });
+      }
+
+      // Mise à jour des informations
+      const result = await pool.query(
+          "UPDATE users SET name = $1, email = $2, role = $3 WHERE id = $4 RETURNING id, name, email, role",
+          [name || user.rows[0].name, email || user.rows[0].email, role || user.rows[0].role, id]
+      );
+
+      console.log(`✅ Utilisateur ID: ${id} mis à jour avec succès`);
+
+      res.json({ message: "Utilisateur mis à jour avec succès", user: result.rows[0] });
+  } catch (err) {
+      console.error("❌ Erreur lors de la mise à jour de l'utilisateur :", err);
+      res.status(500).json({ error: err.message });
+  }
+});
+
+// 🗑️ Suppression d'un utilisateur (admin uniquement)
+app.delete("/users/:id", authenticateToken, isAdmin, async (req, res) => {
+  try {
+      const { id } = req.params;
+
+      console.log(`🗑️ Suppression de l'utilisateur ID: ${id}`);
+
+      const user = await pool.query("SELECT * FROM users WHERE id = $1", [id]);
+      if (user.rows.length === 0) {
+          return res.status(404).json({ error: "Utilisateur introuvable" });
+      }
+
+      await pool.query("DELETE FROM users WHERE id = $1", [id]);
+
+      console.log(`✅ Utilisateur ID: ${id} supprimé avec succès`);
+
+      res.json({ message: "Utilisateur supprimé avec succès" });
+  } catch (err) {
+      console.error("❌ Erreur lors de la suppression de l'utilisateur :", err);
+      res.status(500).json({ error: err.message });
+  }
+});
 
 // ✅ Inscription d’un utilisateur
 app.post("/signup", async (req, res) => {
