@@ -144,11 +144,11 @@ app.delete("/users/:id", async (req, res) => {
 
 app.get("/admin/users", authenticateToken, isAdmin, async (req, res) => {
   try {
-      const users = await pool.query("SELECT id, name, email, role FROM users");
-      res.json(users.rows);
+    const users = await pool.query("SELECT id, name, email, role FROM users");
+    res.json(users.rows);
   } catch (err) {
-      console.error("❌ Erreur :", err);
-      res.status(500).json({ error: err.message });
+    console.error("❌ Erreur :", err);
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -209,10 +209,12 @@ app.post("/login", async (req, res) => {
       return res.status(401).json({ error: "Email ou mot de passe incorrect" });
     }
 
-    // Générer un token JWT valide 1h
-    const token = jwt.sign({ id: user.id, email: user.email }, SECRET_KEY, {
-      expiresIn: "1h",
-    });
+    // 🔥 Générer le token JWT avec `id`, `email` et `role`
+    const token = jwt.sign(
+      { id: user.id, email: user.email, role: user.role },  
+      SECRET_KEY,
+      { expiresIn: "1h" }
+  );
 
     res.json({ message: "Connexion réussie", token });
   } catch (err) {
@@ -270,12 +272,13 @@ function authenticateToken(req, res, next) {
 }
 
 function isAdmin(req, res, next) {
+  console.log("Role de l'utilisateur:", req.user.role); // 🔥 Debugging
+
   if (req.user.role !== "admin") {
-      return res.status(403).json({ error: "Accès interdit, admin requis" });
+    return res.status(403).json({ error: "Accès interdit, admin requis" });
   }
   next();
 }
-
 
 // ✅ Lancer le serveur
 const PORT = process.env.PORT || 3000;
