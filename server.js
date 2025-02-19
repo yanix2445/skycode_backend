@@ -7,7 +7,14 @@ const { Pool } = require("pg");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs"); // 🔥 Utilisation de bcryptjs au lieu de bcrypt
 const crypto = require("crypto");
+const rateLimit = require("express-rate-limit");
 
+// 🛡️ Limite `/refresh` à 1 requête toutes les 10 secondes par IP
+const refreshLimiter = rateLimit({
+    windowMs: 10 * 1000, // 10 secondes
+    max: 1, // 1 requête max par IP
+    message: { error: "Trop de requêtes, réessaie plus tard." }
+});
 const SECRET_KEY = process.env.JWT_SECRET || "fallback_secret"; // 🔥 Récupère la clé depuis `.env`
 
 console.log("🚀 Tentative de connexion à PostgreSQL...");
@@ -239,13 +246,13 @@ app.post("/login", async (req, res) => {
   }
 });
 
-app.post("/refresh", async (req, res) => {
+app.post("/refresh", refreshLimiter, async (req, res) => {
   try {
       const { refreshToken } = req.body;
       console.log(`🔄 Tentative de rafraîchissement du token...`);
 
       if (!refreshToken) {
-          console.warn("❌ Échec : Aucun Refresh Token fourni");
+          console.warn("❌ Aucun Refresh Token fourni");
           return res.status(401).json({ error: "Refresh token requis" });
       }
 
@@ -259,16 +266,22 @@ app.post("/refresh", async (req, res) => {
       const user = result.rows[0];
       console.log(`✅ Refresh Token valide pour ${user.email} (ID: ${user.id})`);
 
-      // Générer un NOUVEAU JWT valide 7 jours
+      // 🔄 Générer un NOUVEAU JWT valide 7 jours
       const newAccessToken = jwt.sign(
           { id: user.id, email: user.email, role: user.role },
           process.env.JWT_SECRET,
           { expiresIn: "7d" }
       );
 
-      console.log(`🔄 Nouveau AccessToken généré pour ${user.email}`);
+      // 🔄 Générer un NOUVEAU Refresh Token
+      const newRefreshToken = crypto.randomBytes(64).toString("hex");
 
-      res.json({ accessToken: newAccessToken });
+      // 🔥 Stocker le NOUVEAU Refresh Token en base et supprimer l’ancien
+      await pool.query("UPDATE users SET refresh_token = $1 WHERE id = $2", [newRefreshToken, user.id]);
+
+      console.log(`🔄 Nouveau AccessToken + RefreshToken générés pour ${user.email}`);
+
+      res.json({ accessToken: newAccessToken, refreshToken: newRefreshToken });
   } catch (err) {
       console.error("❌ Erreur lors du rafraîchissement du token :", err);
       res.status(500).json({ error: err.message });
@@ -317,6 +330,39 @@ app.post("/logout", async (req, res) => {
   }
 });
 
+app.post("/change-password", async (req, res) => {
+  try {
+      const { email, oldPassword, newPassword } = req.body;
+      console.log(`🔐 Changement de mot de passe pour ${email}`);
+
+      // Vérifier si l'utilisateur existe
+      const result = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
+      if (result.rows.length === 0) {
+          return res.status(404).json({ error: "Utilisateur introuvable" });
+      }
+
+      const user = result.rows[0];
+
+      // Vérifier l'ancien mot de passe
+      const isMatch = await bcrypt.compare(oldPassword, user.password);
+      if (!isMatch) {
+          return res.status(401).json({ error: "Ancien mot de passe incorrect" });
+      }
+
+      // Hacher le nouveau mot de passe
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+      // 🔥 Mettre à jour le mot de passe en base
+      await pool.query("UPDATE users SET password = $1, refresh_token = NULL WHERE email = $2", [hashedPassword, email]);
+
+      console.log(`✅ Mot de passe changé avec succès pour ${email} (Toutes les sessions ont été invalidées)`);
+
+      res.json({ message: "Mot de passe changé avec succès. Reconnectez-vous." });
+  } catch (err) {
+      console.error("❌ Erreur lors du changement de mot de passe :", err);
+      res.status(500).json({ error: err.message });
+  }
+});
 
 
 // ✅ Middleware pour vérifier le token JWT
