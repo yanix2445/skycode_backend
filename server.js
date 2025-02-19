@@ -142,6 +142,16 @@ app.delete("/users/:id", async (req, res) => {
   }
 });
 
+app.get("/admin/users", authenticateToken, isAdmin, async (req, res) => {
+  try {
+      const users = await pool.query("SELECT id, name, email, role FROM users");
+      res.json(users.rows);
+  } catch (err) {
+      console.error("❌ Erreur :", err);
+      res.status(500).json({ error: err.message });
+  }
+});
+
 // ✅ Inscription d’un utilisateur
 app.post("/signup", async (req, res) => {
   try {
@@ -242,6 +252,30 @@ app.get("/profile", authenticateToken, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// ✅ Middleware pour vérifier le token JWT
+function authenticateToken(req, res, next) {
+  const token = req.headers.authorization?.split(" ")[1]; // 🔥 Récupère le token envoyé par le client
+  if (!token) {
+    return res.status(401).json({ error: "Accès refusé, token manquant" });
+  }
+
+  try {
+    const decoded = jwt.verify(token, SECRET_KEY); // 🔥 Vérifie que le token est valide
+    req.user = decoded; // 🔥 Ajoute les infos du user (id, email) dans `req`
+    next(); // 🔥 Passe à la prochaine étape
+  } catch (err) {
+    res.status(401).json({ error: "Token invalide" });
+  }
+}
+
+function isAdmin(req, res, next) {
+  if (req.user.role !== "admin") {
+      return res.status(403).json({ error: "Accès interdit, admin requis" });
+  }
+  next();
+}
+
 
 // ✅ Lancer le serveur
 const PORT = process.env.PORT || 3000;
