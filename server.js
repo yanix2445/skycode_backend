@@ -1,7 +1,13 @@
 require("dotenv").config();
+require("dotenv").config();
+
 const express = require("express");
 const cors = require("cors");
 const { Pool } = require("pg");
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcrypt");
+
+const SECRET_KEY = process.env.JWT_SECRET || "fallback_secret"; // 🔥 Récupère la clé depuis `.env`
 
 console.log("🚀 Tentative de connexion à PostgreSQL...");
 
@@ -14,12 +20,13 @@ const pool = new Pool({
 });
 
 // Vérifier la connexion à PostgreSQL au démarrage
-pool.connect()
-  .then(client => {
+pool
+  .connect()
+  .then((client) => {
     console.log("✅ Connexion à PostgreSQL réussie !");
     client.release();
   })
-  .catch(err => {
+  .catch((err) => {
     console.error("❌ Erreur de connexion à PostgreSQL :", err);
     process.exit(1); // Arrête l'application si la connexion échoue
   });
@@ -68,7 +75,9 @@ app.post("/users", async (req, res) => {
     console.log(`🔄 Ajout d'un utilisateur : ${name} - ${email}`);
 
     // Vérifier si l'email existe déjà
-    const checkUser = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
+    const checkUser = await pool.query("SELECT * FROM users WHERE email = $1", [
+      email,
+    ]);
     if (checkUser.rows.length > 0) {
       return res.status(400).json({ error: "L'email est déjà utilisé" });
     }
@@ -92,7 +101,9 @@ app.put("/users/:id", async (req, res) => {
     const { name, email } = req.body;
     console.log(`🔄 Modification de l'utilisateur ${id}...`);
 
-    const checkUser = await pool.query("SELECT * FROM users WHERE id = $1", [id]);
+    const checkUser = await pool.query("SELECT * FROM users WHERE id = $1", [
+      id,
+    ]);
     if (checkUser.rows.length === 0) {
       return res.status(404).json({ error: "Utilisateur non trouvé" });
     }
@@ -115,7 +126,9 @@ app.delete("/users/:id", async (req, res) => {
     const { id } = req.params;
     console.log(`🔄 Suppression de l'utilisateur ${id}...`);
 
-    const checkUser = await pool.query("SELECT * FROM users WHERE id = $1", [id]);
+    const checkUser = await pool.query("SELECT * FROM users WHERE id = $1", [
+      id,
+    ]);
     if (checkUser.rows.length === 0) {
       return res.status(404).json({ error: "Utilisateur non trouvé" });
     }
@@ -128,6 +141,114 @@ app.delete("/users/:id", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// ✅ Inscription d’un utilisateur
+app.post("/signup", async (req, res) => {
+    try {
+        const { name, email, password } = req.body;
+        console.log(`🔄 Inscription de : ${name} - ${email}`);
+
+        // Vérifier si l'utilisateur existe déjà
+        const checkUser = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
+        if (checkUser.rows.length > 0) {
+            return res.status(400).json({ error: "Email déjà utilisé" });
+        }
+
+        // Hasher le mot de passe
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // Insérer le nouvel utilisateur dans la base
+        const result = await pool.query(
+            "INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING *",
+            [name, email, hashedPassword]
+        );
+
+        res.status(201).json({ message: "Compte créé avec succès", user: result.rows[0] });
+    } catch (err) {
+        console.error("❌ Erreur lors de l'inscription :", err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ✅ Connexion d’un utilisateur
+app.post("/login", async (req, res) => {
+  try {
+      const { email, password } = req.body;
+      console.log(`🔄 Connexion de : ${email}`);
+
+      // Vérifier si l'utilisateur existe
+      const result = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
+      if (result.rows.length === 0) {
+          return res.status(401).json({ error: "Email ou mot de passe incorrect" });
+      }
+
+      const user = result.rows[0];
+
+      // Vérifier le mot de passe avec bcrypt
+      const isMatch = await bcrypt.compare(password, user.password);
+      if (!isMatch) {
+          return res.status(401).json({ error: "Email ou mot de passe incorrect" });
+      }
+
+      // Générer un token JWT valide 1h
+      const token = jwt.sign({ id: user.id, email: user.email }, SECRET_KEY, { expiresIn: "1h" });
+
+      res.json({ message: "Connexion réussie", token });
+  } catch (err) {
+      console.error("❌ Erreur lors de la connexion :", err);
+      res.status(500).json({ error: err.message });
+  }
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// ✅ Middleware pour vérifier le token JWT
+function authenticateToken(req, res, next) {
+  const token = req.headers.authorization?.split(" ")[1]; // 🔥 Récupère le token envoyé par le client
+  if (!token) {
+      return res.status(401).json({ error: "Accès refusé, token manquant" });
+  }
+
+  try {
+      const decoded = jwt.verify(token, SECRET_KEY); // 🔥 Vérifie que le token est valide
+      req.user = decoded; // 🔥 Ajoute les infos du user (id, email) dans `req`
+      next(); // 🔥 Passe à la prochaine étape
+  } catch (err) {
+      res.status(401).json({ error: "Token invalide" });
+  }
+}
+
+// ✅ Route protégée pour récupérer le profil de l’utilisateur
+app.get("/profile", authenticateToken, async (req, res) => {
+  try {
+      console.log(`🔄 Profil demandé pour l'utilisateur ID: ${req.user.id}`);
+
+      const result = await pool.query("SELECT id, name, email FROM users WHERE id = $1", [req.user.id]);
+      res.json(result.rows[0]);
+  } catch (err) {
+      console.error("❌ Erreur lors de la récupération du profil :", err);
+      res.status(500).json({ error: err.message });
+  }
+});
+
 
 // ✅ Lancer le serveur
 const PORT = process.env.PORT || 3000;
