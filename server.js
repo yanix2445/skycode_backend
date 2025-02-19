@@ -6,6 +6,7 @@ const cors = require("cors");
 const { Pool } = require("pg");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs"); // 🔥 Utilisation de bcryptjs au lieu de bcrypt
+const crypto = require("crypto");
 
 const SECRET_KEY = process.env.JWT_SECRET || "fallback_secret"; // 🔥 Récupère la clé depuis `.env`
 
