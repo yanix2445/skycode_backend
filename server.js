@@ -144,111 +144,104 @@ app.delete("/users/:id", async (req, res) => {
 
 // ✅ Inscription d’un utilisateur
 app.post("/signup", async (req, res) => {
-    try {
-        const { name, email, password } = req.body;
-        console.log(`🔄 Inscription de : ${name} - ${email}`);
+  try {
+    const { name, email, password, role } = req.body;
+    console.log(`🔄 Inscription de : ${name} - ${email}`);
 
-        // Vérifier si l'utilisateur existe déjà
-        const checkUser = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
-        if (checkUser.rows.length > 0) {
-            return res.status(400).json({ error: "Email déjà utilisé" });
-        }
-
-        // Hasher le mot de passe
-        const hashedPassword = await bcrypt.hash(password, 10);
-
-        // Insérer le nouvel utilisateur dans la base
-        const result = await pool.query(
-            "INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING *",
-            [name, email, hashedPassword]
-        );
-
-        res.status(201).json({ message: "Compte créé avec succès", user: result.rows[0] });
-    } catch (err) {
-        console.error("❌ Erreur lors de l'inscription :", err);
-        res.status(500).json({ error: err.message });
+    // Vérifier si l'utilisateur existe déjà
+    const checkUser = await pool.query("SELECT * FROM users WHERE email = $1", [
+      email,
+    ]);
+    if (checkUser.rows.length > 0) {
+      return res.status(400).json({ error: "Email déjà utilisé" });
     }
+
+    // Hasher le mot de passe
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // 🔥 Sécurisation : Si aucun rôle n’est fourni, mettre `user` par défaut
+    const userRole = role === "admin" ? "admin" : "user";
+
+    // Insérer le nouvel utilisateur dans la base
+    const result = await pool.query(
+      "INSERT INTO users (name, email, password, role) VALUES ($1, $2, $3, $4) RETURNING *",
+      [name, email, hashedPassword, userRole]
+    );
+
+    res
+      .status(201)
+      .json({ message: "Compte créé avec succès", user: result.rows[0] });
+  } catch (err) {
+    console.error("❌ Erreur lors de l'inscription :", err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ✅ Connexion d’un utilisateur
 app.post("/login", async (req, res) => {
   try {
-      const { email, password } = req.body;
-      console.log(`🔄 Connexion de : ${email}`);
+    const { email, password } = req.body;
+    console.log(`🔄 Connexion de : ${email}`);
 
-      // Vérifier si l'utilisateur existe
-      const result = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
-      if (result.rows.length === 0) {
-          return res.status(401).json({ error: "Email ou mot de passe incorrect" });
-      }
+    // Vérifier si l'utilisateur existe
+    const result = await pool.query("SELECT * FROM users WHERE email = $1", [
+      email,
+    ]);
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: "Email ou mot de passe incorrect" });
+    }
 
-      const user = result.rows[0];
+    const user = result.rows[0];
 
-      // Vérifier le mot de passe avec bcrypt
-      const isMatch = await bcrypt.compare(password, user.password);
-      if (!isMatch) {
-          return res.status(401).json({ error: "Email ou mot de passe incorrect" });
-      }
+    // Vérifier le mot de passe avec bcrypt
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ error: "Email ou mot de passe incorrect" });
+    }
 
-      // Générer un token JWT valide 1h
-      const token = jwt.sign({ id: user.id, email: user.email }, SECRET_KEY, { expiresIn: "1h" });
+    // Générer un token JWT valide 1h
+    const token = jwt.sign({ id: user.id, email: user.email }, SECRET_KEY, {
+      expiresIn: "1h",
+    });
 
-      res.json({ message: "Connexion réussie", token });
+    res.json({ message: "Connexion réussie", token });
   } catch (err) {
-      console.error("❌ Erreur lors de la connexion :", err);
-      res.status(500).json({ error: err.message });
+    console.error("❌ Erreur lors de la connexion :", err);
+    res.status(500).json({ error: err.message });
   }
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 // ✅ Middleware pour vérifier le token JWT
 function authenticateToken(req, res, next) {
   const token = req.headers.authorization?.split(" ")[1]; // 🔥 Récupère le token envoyé par le client
   if (!token) {
-      return res.status(401).json({ error: "Accès refusé, token manquant" });
+    return res.status(401).json({ error: "Accès refusé, token manquant" });
   }
 
   try {
-      const decoded = jwt.verify(token, SECRET_KEY); // 🔥 Vérifie que le token est valide
-      req.user = decoded; // 🔥 Ajoute les infos du user (id, email) dans `req`
-      next(); // 🔥 Passe à la prochaine étape
+    const decoded = jwt.verify(token, SECRET_KEY); // 🔥 Vérifie que le token est valide
+    req.user = decoded; // 🔥 Ajoute les infos du user (id, email) dans `req`
+    next(); // 🔥 Passe à la prochaine étape
   } catch (err) {
-      res.status(401).json({ error: "Token invalide" });
+    res.status(401).json({ error: "Token invalide" });
   }
 }
 
 // ✅ Route protégée pour récupérer le profil de l’utilisateur
 app.get("/profile", authenticateToken, async (req, res) => {
   try {
-      console.log(`🔄 Profil demandé pour l'utilisateur ID: ${req.user.id}`);
+    console.log(`🔄 Profil demandé pour l'utilisateur ID: ${req.user.id}`);
 
-      const result = await pool.query("SELECT id, name, email FROM users WHERE id = $1", [req.user.id]);
-      res.json(result.rows[0]);
+    const result = await pool.query(
+      "SELECT id, name, email FROM users WHERE id = $1",
+      [req.user.id]
+    );
+    res.json(result.rows[0]);
   } catch (err) {
-      console.error("❌ Erreur lors de la récupération du profil :", err);
-      res.status(500).json({ error: err.message });
+    console.error("❌ Erreur lors de la récupération du profil :", err);
+    res.status(500).json({ error: err.message });
   }
 });
-
 
 // ✅ Lancer le serveur
 const PORT = process.env.PORT || 3000;
