@@ -56,6 +56,9 @@ app.get("/db-test", async (req, res) => {
   }
 });
 
+
+
+
 // ✅ Récupérer tous les utilisateurs
 app.get("/users", async (req, res) => {
   try {
@@ -152,6 +155,8 @@ app.get("/admin/users", authenticateToken, isAdmin, async (req, res) => {
   }
 });
 
+
+
 // ✅ Inscription d’un utilisateur
 app.post("/signup", async (req, res) => {
   try {
@@ -190,54 +195,84 @@ app.post("/signup", async (req, res) => {
 // ✅ Connexion d’un utilisateur
 app.post("/login", async (req, res) => {
   try {
-    const { email, password } = req.body;
-    console.log(`🔄 Connexion de : ${email}`);
+      const { email, password } = req.body;
+      console.log(`🔍 Tentative de connexion pour : ${email}`);
 
-    // Vérifier si l'utilisateur existe
-    const result = await pool.query("SELECT * FROM users WHERE email = $1", [
-      email,
-    ]);
-    if (result.rows.length === 0) {
-      return res.status(401).json({ error: "Email ou mot de passe incorrect" });
-    }
+      // Vérifier si l'utilisateur existe
+      const result = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
+      if (result.rows.length === 0) {
+          console.warn(`❌ Échec de connexion : Email ${email} introuvable`);
+          return res.status(401).json({ error: "Email ou mot de passe incorrect" });
+      }
 
-    const user = result.rows[0];
+      const user = result.rows[0];
 
-    // Vérifier le mot de passe avec bcrypt
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(401).json({ error: "Email ou mot de passe incorrect" });
-    }
+      // Vérifier le mot de passe
+      const isMatch = await bcrypt.compare(password, user.password);
+      if (!isMatch) {
+          console.warn(`❌ Échec de connexion : Mot de passe incorrect pour ${email}`);
+          return res.status(401).json({ error: "Email ou mot de passe incorrect" });
+      }
 
-    // 🔥 Générer le token JWT avec `id`, `email` et `role`
-    const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role },  
-      SECRET_KEY,
-      { expiresIn: "1h" }
-  );
+      console.log(`✅ Connexion réussie pour ${email} (ID: ${user.id}, Rôle: ${user.role})`);
 
-    res.json({ message: "Connexion réussie", token });
+      // Générer un JWT qui expire dans **7 jours**
+      const accessToken = jwt.sign(
+          { id: user.id, email: user.email, role: user.role },
+          process.env.JWT_SECRET,
+          { expiresIn: "7d" }
+      );
+
+      // Générer un Refresh Token (90 jours)
+      const refreshToken = crypto.randomBytes(64).toString("hex");
+
+      // Stocker le Refresh Token en base
+      await pool.query("UPDATE users SET refresh_token = $1 WHERE id = $2", [refreshToken, user.id]);
+
+      console.log(`🔄 Tokens générés : AccessToken (7j) & RefreshToken (90j) pour ${email}`);
+
+      res.json({ message: "Connexion réussie", accessToken, refreshToken });
   } catch (err) {
-    console.error("❌ Erreur lors de la connexion :", err);
-    res.status(500).json({ error: err.message });
+      console.error("❌ Erreur lors de la connexion :", err);
+      res.status(500).json({ error: err.message });
   }
 });
 
-// ✅ Middleware pour vérifier le token JWT
-function authenticateToken(req, res, next) {
-  const token = req.headers.authorization?.split(" ")[1]; // 🔥 Récupère le token envoyé par le client
-  if (!token) {
-    return res.status(401).json({ error: "Accès refusé, token manquant" });
-  }
-
+app.post("/refresh", async (req, res) => {
   try {
-    const decoded = jwt.verify(token, SECRET_KEY); // 🔥 Vérifie que le token est valide
-    req.user = decoded; // 🔥 Ajoute les infos du user (id, email) dans `req`
-    next(); // 🔥 Passe à la prochaine étape
+      const { refreshToken } = req.body;
+      console.log(`🔄 Tentative de rafraîchissement du token...`);
+
+      if (!refreshToken) {
+          console.warn("❌ Échec : Aucun Refresh Token fourni");
+          return res.status(401).json({ error: "Refresh token requis" });
+      }
+
+      // Vérifier si le Refresh Token existe en base
+      const result = await pool.query("SELECT * FROM users WHERE refresh_token = $1", [refreshToken]);
+      if (result.rows.length === 0) {
+          console.warn(`❌ Échec : Refresh Token invalide`);
+          return res.status(403).json({ error: "Refresh token invalide" });
+      }
+
+      const user = result.rows[0];
+      console.log(`✅ Refresh Token valide pour ${user.email} (ID: ${user.id})`);
+
+      // Générer un NOUVEAU JWT valide 7 jours
+      const newAccessToken = jwt.sign(
+          { id: user.id, email: user.email, role: user.role },
+          process.env.JWT_SECRET,
+          { expiresIn: "7d" }
+      );
+
+      console.log(`🔄 Nouveau AccessToken généré pour ${user.email}`);
+
+      res.json({ accessToken: newAccessToken });
   } catch (err) {
-    res.status(401).json({ error: "Token invalide" });
+      console.error("❌ Erreur lors du rafraîchissement du token :", err);
+      res.status(500).json({ error: err.message });
   }
-}
+});
 
 // ✅ Route protégée pour récupérer le profil de l’utilisateur
 app.get("/profile", authenticateToken, async (req, res) => {
@@ -255,6 +290,49 @@ app.get("/profile", authenticateToken, async (req, res) => {
   }
 });
 
+app.post("/logout", async (req, res) => {
+  try {
+      const { refreshToken } = req.body;
+      console.log(`🚪 Tentative de déconnexion...`);
+
+      if (!refreshToken) {
+          console.warn("❌ Échec : Aucun Refresh Token fourni");
+          return res.status(401).json({ error: "Refresh token requis" });
+      }
+
+      // Supprimer le Refresh Token en base
+      const result = await pool.query("UPDATE users SET refresh_token = NULL WHERE refresh_token = $1 RETURNING email", [refreshToken]);
+
+      if (result.rows.length === 0) {
+          console.warn("❌ Échec : Refresh Token introuvable en base");
+          return res.status(403).json({ error: "Refresh token invalide" });
+      }
+
+      console.log(`✅ Déconnexion réussie pour ${result.rows[0].email}`);
+      res.json({ message: "Déconnexion réussie" });
+  } catch (err) {
+      console.error("❌ Erreur lors de la déconnexion :", err);
+      res.status(500).json({ error: err.message });
+  }
+});
+
+
+
+// ✅ Middleware pour vérifier le token JWT
+function authenticateToken(req, res, next) {
+  const token = req.headers.authorization?.split(" ")[1]; // 🔥 Récupère le token envoyé par le client
+  if (!token) {
+    return res.status(401).json({ error: "Accès refusé, token manquant" });
+  }
+
+  try {
+    const decoded = jwt.verify(token, SECRET_KEY); // 🔥 Vérifie que le token est valide
+    req.user = decoded; // 🔥 Ajoute les infos du user (id, email) dans `req`
+    next(); // 🔥 Passe à la prochaine étape
+  } catch (err) {
+    res.status(401).json({ error: "Token invalide" });
+  }
+}
 // ✅ Middleware pour vérifier le token JWT
 function authenticateToken(req, res, next) {
   const token = req.headers.authorization?.split(" ")[1]; // 🔥 Récupère le token envoyé par le client
