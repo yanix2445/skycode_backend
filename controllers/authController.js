@@ -9,7 +9,7 @@ const signup = async (req, res) => {
         const { name, email, password } = req.body;
 
         // 🔹 Par défaut, un utilisateur a le rôle "user" (role_id = 0 d'après ta DB)
-        const defaultRoleId = 7;
+        const defaultRoleId = 0;
 
         // 🔹 Hachage du mot de passe
         const hashedPassword = await bcrypt.hash(password, 10);
