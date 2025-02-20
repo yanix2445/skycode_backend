@@ -79,29 +79,58 @@ app.get("/users", async (req, res) => {
   }
 });
 
-// ✅ Ajouter un utilisateur
-app.post("/users", async (req, res) => {
+// ✅ Récupération des utilisateurs avec pagination et filtrage
+app.get("/users", authenticateToken, isAdmin, async (req, res) => {
   try {
-    const { name, email } = req.body;
-    console.log(`🔄 Ajout d'un utilisateur : ${name} - ${email}`);
+      let { role, page = 1, limit = 10 } = req.query; 
 
-    // Vérifier si l'email existe déjà
-    const checkUser = await pool.query("SELECT * FROM users WHERE email = $1", [
-      email,
-    ]);
-    if (checkUser.rows.length > 0) {
-      return res.status(400).json({ error: "L'email est déjà utilisé" });
-    }
+      page = parseInt(page, 10) || 1;  // Convertit en nombre entier
+      limit = parseInt(limit, 10) || 10; // Définit un max par défaut
 
-    const result = await pool.query(
-      "INSERT INTO users (name, email) VALUES ($1, $2) RETURNING *",
-      [name, email]
-    );
-    console.log("✅ Utilisateur ajouté :", result.rows[0]);
-    res.json(result.rows[0]);
+      const offset = (page - 1) * limit; // Calcule l’offset
+
+      console.log(`🔄 Récupération des utilisateurs (Page: ${page}, Limit: ${limit}, Rôle: ${role || "tous"})`);
+
+      // Construire la requête SQL dynamique
+      let query = "SELECT id, name, email, role FROM users";
+      let queryParams = [];
+
+      if (role) {
+          query += " WHERE role = $1";
+          queryParams.push(role);
+      }
+
+      query += " ORDER BY id ASC LIMIT $2 OFFSET $3";
+      queryParams.push(limit, offset);
+
+      const result = await pool.query(query, queryParams);
+
+      // Compter le nombre total d'utilisateurs pour la pagination
+      let countQuery = "SELECT COUNT(*) FROM users";
+      let countParams = [];
+
+      if (role) {
+          countQuery += " WHERE role = $1";
+          countParams.push(role);
+      }
+
+      const totalCount = await pool.query(countQuery, countParams);
+      const totalUsers = parseInt(totalCount.rows[0].count, 10);
+
+      // Calcul du nombre total de pages
+      const totalPages = Math.ceil(totalUsers / limit);
+
+      res.json({
+          totalUsers,
+          totalPages,
+          currentPage: page,
+          perPage: limit,
+          users: result.rows
+      });
+
   } catch (err) {
-    console.error("❌ Erreur lors de l'ajout d'un utilisateur :", err);
-    res.status(500).json({ error: err.message });
+      console.error("❌ Erreur lors de la récupération des utilisateurs :", err);
+      res.status(500).json({ error: err.message });
   }
 });
 
