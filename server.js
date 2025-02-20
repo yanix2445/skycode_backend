@@ -65,20 +65,6 @@ app.get("/db-test", async (req, res) => {
 });
 
 
-
-
-/**  ✅ Récupérer tous les utilisateurs
-app.get("/users", async (req, res) => {
-  try {
-    console.log("🔄 Récupération des utilisateurs...");
-    const result = await pool.query("SELECT * FROM users");
-    res.json(result.rows);
-  } catch (err) {
-    console.error("❌ Erreur lors de la récupération des utilisateurs :", err);
-    res.status(500).json({ error: err.message });
-  }
-})*/
-
 // ✅ Récupération des utilisateurs avec pagination et filtrage
 app.get("/users", authenticateToken, isAdmin, async (req, res) => {
   try {
@@ -137,28 +123,36 @@ app.get("/users", authenticateToken, isAdmin, async (req, res) => {
 });
 
 // ✅ Modifier un utilisateur
-app.put("/users/:id", async (req, res) => {
+app.put("/users/:id", authenticateToken, isAdmin, async (req, res) => {
   try {
-    const { id } = req.params;
-    const { name, email } = req.body;
-    console.log(`🔄 Modification de l'utilisateur ${id}...`);
+      const { id } = req.params;
+      const { name, email, role } = req.body;
 
-    const checkUser = await pool.query("SELECT * FROM users WHERE id = $1", [
-      id,
-    ]);
-    if (checkUser.rows.length === 0) {
-      return res.status(404).json({ error: "Utilisateur non trouvé" });
-    }
+      console.log(`✏️ Mise à jour de l'utilisateur ID: ${id}`);
 
-    const result = await pool.query(
-      "UPDATE users SET name = $1, email = $2 WHERE id = $3 RETURNING *",
-      [name, email, id]
-    );
-    console.log("✅ Utilisateur modifié :", result.rows[0]);
-    res.json(result.rows[0]);
+      // Vérifier si l'utilisateur existe
+      const user = await pool.query("SELECT * FROM users WHERE id = $1", [id]);
+      if (user.rows.length === 0) {
+          return res.status(404).json({ error: "Utilisateur introuvable" });
+      }
+
+      // Utiliser les valeurs existantes si elles ne sont pas fournies
+      const newName = name || user.rows[0].name;
+      const newEmail = email || user.rows[0].email;
+      const newRole = role || user.rows[0].role;
+
+      // Mise à jour des informations
+      const result = await pool.query(
+          "UPDATE users SET name = $1, email = $2, role = $3 WHERE id = $4 RETURNING id, name, email, role",
+          [newName, newEmail, newRole, id]
+      );
+
+      console.log(`✅ Utilisateur ID: ${id} mis à jour avec succès`);
+
+      res.json({ message: "Utilisateur mis à jour avec succès", user: result.rows[0] });
   } catch (err) {
-    console.error("❌ Erreur lors de la modification :", err);
-    res.status(500).json({ error: err.message });
+      console.error("❌ Erreur lors de la mise à jour de l'utilisateur :", err);
+      res.status(500).json({ error: err.message });
   }
 });
 
