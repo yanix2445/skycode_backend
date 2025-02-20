@@ -56,4 +56,40 @@ const logout = async (req, res) => {
     }
 };
 
-module.exports = { signup, login, logout };
+
+const refreshToken = async (req, res) => {
+  try {
+      const { refreshToken } = req.body;
+
+      if (!refreshToken) {
+          return res.status(401).json({ error: "Refresh token requis" });
+      }
+
+      // Vérifier si le Refresh Token existe en base
+      const result = await pool.query("SELECT * FROM users WHERE refresh_token = $1", [refreshToken]);
+      if (result.rows.length === 0) {
+          return res.status(403).json({ error: "Refresh token invalide" });
+      }
+
+      const user = result.rows[0];
+
+      // Générer un NOUVEAU JWT valide 7 jours
+      const newAccessToken = jwt.sign(
+          { id: user.id, email: user.email, role: user.role },
+          process.env.JWT_SECRET,
+          { expiresIn: "7d" }
+      );
+
+      // Générer un NOUVEAU Refresh Token
+      const newRefreshToken = crypto.randomBytes(64).toString("hex");
+
+      // Mettre à jour le Refresh Token en base
+      await pool.query("UPDATE users SET refresh_token = $1 WHERE id = $2", [newRefreshToken, user.id]);
+
+      res.json({ accessToken: newAccessToken, refreshToken: newRefreshToken });
+  } catch (err) {
+      res.status(500).json({ error: err.message });
+  }
+};
+
+module.exports = { signup, login, logout, refreshToken };
