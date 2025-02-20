@@ -1,4 +1,5 @@
 const { pool } = require("../config/database");
+const { generateAccessToken, generateRefreshToken } = require("../utils/generateToken");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
@@ -35,8 +36,8 @@ const login = async (req, res) => {
             return res.status(401).json({ error: "Email ou mot de passe incorrect" });
         }
 
-        const accessToken = jwt.sign({ id: user.id, email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: "7d" });
-        const refreshToken = crypto.randomBytes(64).toString("hex");
+        const accessToken = generateAccessToken(user);
+        const refreshToken = generateRefreshToken();
 
         await pool.query("UPDATE users SET refresh_token = $1 WHERE id = $2", [refreshToken, user.id]);
 
