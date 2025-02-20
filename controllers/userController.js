@@ -14,14 +14,25 @@ const getAllUsers = async (req, res) => {
 const getUserById = async (req, res) => {
     try {
         const { id } = req.params;
-        const result = await pool.query("SELECT id, name, email, role FROM users WHERE id = $1", [id]);
+
+        console.log(`🔍 Recherche de l'utilisateur ID: ${id}`);
+
+        const result = await pool.query(`
+            SELECT u.id, u.name, u.email, u.role_id, 
+                   r.alias AS role_alias, r.name AS role_name, r.level
+            FROM users u
+            JOIN roles r ON u.role_id = r.id
+            WHERE u.id = $1
+        `, [id]);
 
         if (result.rows.length === 0) {
             return res.status(404).json({ error: "Utilisateur introuvable" });
         }
 
         res.json(result.rows[0]);
+
     } catch (err) {
+        console.error("❌ Erreur lors de la récupération de l'utilisateur :", err);
         res.status(500).json({ error: err.message });
     }
 };
