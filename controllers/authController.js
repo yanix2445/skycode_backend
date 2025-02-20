@@ -6,16 +6,27 @@ const crypto = require("crypto");
 
 const signup = async (req, res) => {
     try {
-        const { name, email, password, role = "user" } = req.body;
+        const { name, email, password } = req.body;
+
+        // 🔹 Par défaut, un utilisateur a le rôle "user" (role_id = 0 d'après ta DB)
+        const defaultRoleId = 0;
+
+        // 🔹 Hachage du mot de passe
         const hashedPassword = await bcrypt.hash(password, 10);
 
+        // 🔹 Insertion de l'utilisateur dans la base de données
         const result = await pool.query(
-            "INSERT INTO users (name, email, password, role) VALUES ($1, $2, $3, $4) RETURNING id, name, email, role",
-            [name, email, hashedPassword, role]
+            "INSERT INTO users (name, email, password, role_id) VALUES ($1, $2, $3, $4) RETURNING *",
+            [name, email, hashedPassword, defaultRoleId]
         );
 
-        res.status(201).json({ message: "Utilisateur créé avec succès", user: result.rows[0] });
+        res.status(201).json({
+            message: "Utilisateur créé avec succès",
+            user: result.rows[0],
+        });
+
     } catch (err) {
+        console.error("❌ Erreur lors de l'inscription :", err);
         res.status(500).json({ error: err.message });
     }
 };
