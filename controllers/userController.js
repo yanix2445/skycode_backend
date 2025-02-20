@@ -2,54 +2,54 @@ const { pool } = require("../config/database");
 
 // ✅ Récupérer tous les utilisateurs avec pagination et filtre par rôle
 const getAllUsers = async (req, res) => {
-    try {
-        let { role, page = 1, limit = 10 } = req.query;
+  try {
+      let { role, page = 1, limit = 10 } = req.query;
 
-        page = parseInt(page, 10) || 1;
-        limit = parseInt(limit, 10) || 10;
-        const offset = (page - 1) * limit;
+      page = parseInt(page, 10) || 1;  
+      limit = parseInt(limit, 10) || 10;
+      const offset = (page - 1) * limit;
 
-        console.log(`🔄 Récupération des utilisateurs (Page: ${page}, Limit: ${limit}, Rôle: ${role || "tous"})`);
+      console.log(`🔍 Récupération des utilisateurs - Page: ${page}, Limit: ${limit}, Rôle: ${role || "tous"}`);
 
-        // Requête SQL dynamique
-        let query = "SELECT id, name, email, role FROM users";
-        let queryParams = [];
+      let query = "SELECT id, name, email, role FROM users";
+      let queryParams = [];
 
-        if (role) {
-            query += " WHERE role = $1";
-            queryParams.push(role);
-        }
+      if (role) {
+          query += " WHERE role = $1";
+          queryParams.push(role);
+      }
 
-        query += " ORDER BY id ASC LIMIT $2 OFFSET $3";
-        queryParams.push(limit, offset);
+      query += " ORDER BY id ASC LIMIT $2 OFFSET $3";
+      queryParams.push(limit, offset);
 
-        const result = await pool.query(query, queryParams);
+      console.log(`📌 Requête SQL exécutée: ${query} avec paramètres ${queryParams}`);
 
-        // Compter le nombre total d’utilisateurs pour la pagination
-        let countQuery = "SELECT COUNT(*) FROM users";
-        let countParams = [];
+      const result = await pool.query(query, queryParams);
 
-        if (role) {
-            countQuery += " WHERE role = $1";
-            countParams.push(role);
-        }
+      // ✅ Vérification du nombre total d'utilisateurs
+      let countQuery = "SELECT COUNT(*) FROM users";
+      let countParams = [];
 
-        const totalCount = await pool.query(countQuery, countParams);
-        const totalUsers = parseInt(totalCount.rows[0].count, 10);
-        const totalPages = Math.ceil(totalUsers / limit);
+      if (role) {
+          countQuery += " WHERE role = $1";
+          countParams.push(role);
+      }
 
-        res.json({
-            totalUsers,
-            totalPages,
-            currentPage: page,
-            perPage: limit,
-            users: result.rows
-        });
+      const totalCount = await pool.query(countQuery, countParams);
+      const totalUsers = parseInt(totalCount.rows[0].count, 10);
+      const totalPages = Math.ceil(totalUsers / limit);
 
-    } catch (err) {
-        console.error("❌ Erreur lors de la récupération des utilisateurs :", err);
-        res.status(500).json({ error: err.message });
-    }
+      res.json({
+          totalUsers,
+          totalPages,
+          currentPage: page,
+          perPage: limit,
+          users: result.rows,
+      });
+  } catch (err) {
+      console.error("❌ Erreur lors de la récupération des utilisateurs :", err);
+      res.status(500).json({ error: err.message });
+  }
 };
 
 // ✅ Récupérer un utilisateur par ID
