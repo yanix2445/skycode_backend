@@ -1,11 +1,15 @@
 const jwt = require("jsonwebtoken");
+const SECRET_KEY = process.env.JWT_SECRET || "fallback_secret";
 
+// ✅ Middleware d'authentification
 const authenticateToken = (req, res, next) => {
     const token = req.headers.authorization?.split(" ")[1];
-    if (!token) return res.status(401).json({ error: "Accès refusé, token manquant" });
+    if (!token) {
+        return res.status(401).json({ error: "Accès refusé, token manquant" });
+    }
 
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const decoded = jwt.verify(token, SECRET_KEY);
         req.user = decoded;
         next();
     } catch (err) {
@@ -13,11 +17,12 @@ const authenticateToken = (req, res, next) => {
     }
 };
 
-const isAdmin = (req, res, next) => {
-    if (req.user.role !== "admin") {
-        return res.status(403).json({ error: "⛔️ Accès interdit, admin requis" });
+// ✅ Middleware de vérification des rôles
+const checkRole = (roles) => (req, res, next) => {
+    if (!roles.includes(req.user.role)) {
+        return res.status(403).json({ error: "Accès interdit, rôle insuffisant" });
     }
     next();
 };
 
-module.exports = { authenticateToken, isAdmin };
+module.exports = { authenticateToken, checkRole };
