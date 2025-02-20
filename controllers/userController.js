@@ -13,13 +13,15 @@ const getAllUsers = async (req, res) => {
 
       let query = "SELECT id, name, email, role FROM users";
       let queryParams = [];
+      let paramIndex = 1;
 
       if (role) {
-          query += " WHERE role = $1";
+          query += ` WHERE role = $${paramIndex}`;
           queryParams.push(role);
+          paramIndex++;
       }
 
-      query += " ORDER BY id ASC LIMIT $2 OFFSET $3";
+      query += ` ORDER BY id ASC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
       queryParams.push(limit, offset);
 
       console.log(`📌 Requête SQL exécutée: ${query} avec paramètres ${queryParams}`);
@@ -29,9 +31,10 @@ const getAllUsers = async (req, res) => {
       // ✅ Vérification du nombre total d'utilisateurs
       let countQuery = "SELECT COUNT(*) FROM users";
       let countParams = [];
+      let countParamIndex = 1;
 
       if (role) {
-          countQuery += " WHERE role = $1";
+          countQuery += ` WHERE role = $${countParamIndex}`;
           countParams.push(role);
       }
 
@@ -75,32 +78,56 @@ const getUserById = async (req, res) => {
 
 // ✅ Mettre à jour un utilisateur (Admin uniquement)
 const updateUser = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { name, email, role } = req.body;
+  try {
+      const { id } = req.params;
+      const { name, email, role } = req.body;
 
-        console.log(`✏️ Mise à jour de l'utilisateur ID: ${id}`);
+      console.log(`✏️ Mise à jour de l'utilisateur ID: ${id}`);
 
-        // Vérifier si l'utilisateur existe
-        const checkUser = await pool.query("SELECT * FROM users WHERE id = $1", [id]);
-        if (checkUser.rows.length === 0) {
-            return res.status(404).json({ error: "Utilisateur introuvable" });
-        }
+      // Vérifier si l'utilisateur existe
+      const checkUser = await pool.query("SELECT * FROM users WHERE id = $1", [id]);
+      if (checkUser.rows.length === 0) {
+          return res.status(404).json({ error: "Utilisateur introuvable" });
+      }
 
-        // Mise à jour des informations (garder les valeurs existantes si aucun champ n'est fourni)
-        const updatedUser = await pool.query(
-            "UPDATE users SET name = COALESCE($1, name), email = COALESCE($2, email), role = COALESCE($3, role) WHERE id = $4 RETURNING id, name, email, role",
-            [name, email, role, id]
-        );
+      // Construction dynamique de la requête
+      let updateFields = [];
+      let queryParams = [];
+      let paramIndex = 1;
 
-        console.log(`✅ Utilisateur ID: ${id} mis à jour avec succès`);
+      if (name) {
+          updateFields.push(`name = $${paramIndex}`);
+          queryParams.push(name);
+          paramIndex++;
+      }
+      if (email) {
+          updateFields.push(`email = $${paramIndex}`);
+          queryParams.push(email);
+          paramIndex++;
+      }
+      if (role) {
+          updateFields.push(`role = $${paramIndex}`);
+          queryParams.push(role);
+          paramIndex++;
+      }
 
-        res.json({ message: "Utilisateur mis à jour avec succès", user: updatedUser.rows[0] });
+      if (updateFields.length === 0) {
+          return res.status(400).json({ error: "Aucune donnée à mettre à jour" });
+      }
 
-    } catch (err) {
-        console.error("❌ Erreur lors de la mise à jour de l'utilisateur :", err);
-        res.status(500).json({ error: err.message });
-    }
+      queryParams.push(id);
+      const updateQuery = `UPDATE users SET ${updateFields.join(", ")} WHERE id = $${paramIndex} RETURNING id, name, email, role`;
+
+      const updatedUser = await pool.query(updateQuery, queryParams);
+
+      console.log(`✅ Utilisateur ID: ${id} mis à jour avec succès`);
+
+      res.json({ message: "Utilisateur mis à jour avec succès", user: updatedUser.rows[0] });
+
+  } catch (err) {
+      console.error("❌ Erreur lors de la mise à jour de l'utilisateur :", err);
+      res.status(500).json({ error: err.message });
+  }
 };
 
 // ✅ Supprimer un utilisateur (Admin uniquement)
