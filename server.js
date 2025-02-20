@@ -16,7 +16,9 @@ connectDB();
 // Chargement des routes
 app.use("/auth", authRoutes);
 app.use("/users", userRoutes);
-
+app.get("/", (req, res) => {
+    res.send("🚀 API backend en ligne !");
+});
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`✅ Serveur en cours d'exécution sur le port ${PORT}`);

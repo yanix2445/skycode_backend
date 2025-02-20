@@ -92,4 +92,28 @@ const refreshToken = async (req, res) => {
   }
 };
 
-module.exports = { signup, login, logout, refreshToken };
+
+const changePassword = async (req, res) => {
+  try {
+      const { email, oldPassword, newPassword } = req.body;
+      const user = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
+
+      if (user.rows.length === 0) {
+          return res.status(404).json({ error: "Utilisateur introuvable" });
+      }
+
+      const isMatch = await bcrypt.compare(oldPassword, user.rows[0].password);
+      if (!isMatch) {
+          return res.status(401).json({ error: "Ancien mot de passe incorrect" });
+      }
+
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      await pool.query("UPDATE users SET password = $1 WHERE email = $2", [hashedPassword, email]);
+
+      res.json({ message: "Mot de passe changé avec succès" });
+  } catch (err) {
+      res.status(500).json({ error: err.message });
+  }
+};
+
+module.exports = { signup, login, logout, refreshToken, changePassword };
