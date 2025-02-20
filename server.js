@@ -100,8 +100,10 @@ app.get("/users", authenticateToken, isAdmin, async (req, res) => {
           queryParams.push(role);
       }
 
-      query += " ORDER BY id ASC LIMIT $2 OFFSET $3";
+      query += ` ORDER BY id ASC LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}`;
       queryParams.push(limit, offset);
+
+      console.log("🔍 Requête SQL exécutée :", query, queryParams);
 
       const result = await pool.query(query, queryParams);
 
