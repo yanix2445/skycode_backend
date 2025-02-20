@@ -67,7 +67,7 @@ app.get("/db-test", async (req, res) => {
 
 
 
-// ✅ Récupérer tous les utilisateurs
+/**  ✅ Récupérer tous les utilisateurs
 app.get("/users", async (req, res) => {
   try {
     console.log("🔄 Récupération des utilisateurs...");
@@ -77,7 +77,7 @@ app.get("/users", async (req, res) => {
     console.error("❌ Erreur lors de la récupération des utilisateurs :", err);
     res.status(500).json({ error: err.message });
   }
-});
+})*/
 
 // ✅ Récupération des utilisateurs avec pagination et filtrage
 app.get("/users", authenticateToken, isAdmin, async (req, res) => {
@@ -521,22 +521,6 @@ app.post("/change-password", async (req, res) => {
   }
 });
 
-
-// ✅ Middleware pour vérifier le token JWT
-function authenticateToken(req, res, next) {
-  const token = req.headers.authorization?.split(" ")[1]; // 🔥 Récupère le token envoyé par le client
-  if (!token) {
-    return res.status(401).json({ error: "Accès refusé, token manquant" });
-  }
-
-  try {
-    const decoded = jwt.verify(token, SECRET_KEY); // 🔥 Vérifie que le token est valide
-    req.user = decoded; // 🔥 Ajoute les infos du user (id, email) dans `req`
-    next(); // 🔥 Passe à la prochaine étape
-  } catch (err) {
-    res.status(401).json({ error: "Token invalide" });
-  }
-}
 // ✅ Middleware pour vérifier le token JWT
 function authenticateToken(req, res, next) {
   const token = req.headers.authorization?.split(" ")[1]; // 🔥 Récupère le token envoyé par le client
