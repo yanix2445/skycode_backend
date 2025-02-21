@@ -1,11 +1,17 @@
 const { pool } = require("../config/database");
 
-// ✅ Récupérer tous les utilisateurs (Admins et Managers)
-const getAllUsers = async (req, res) => {
+const getUsers = async (req, res) => {
     try {
-        const result = await pool.query("SELECT id, name, email, role FROM users");
+        const result = await pool.query(`
+            SELECT u.id, u.name, u.email, u.role_id, 
+                   r.alias AS role_alias, r.name AS role_name, r.level
+            FROM users u
+            JOIN roles r ON u.role_id = r.id
+        `);
+
         res.json(result.rows);
     } catch (err) {
+        console.error("❌ Erreur lors de la récupération des utilisateurs :", err);
         res.status(500).json({ error: err.message });
     }
 };
