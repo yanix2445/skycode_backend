@@ -32,19 +32,5 @@ const assignRole = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 };
-const { pool } = require("../config/database");
-
-// ✅ Récupérer tous les rôles disponibles
-const getRoles = async (req, res) => {
-    try {
-        const result = await pool.query("SELECT * FROM roles ORDER BY level ASC");
-        res.json(result.rows);
-    } catch (err) {
-        console.error("❌ Erreur lors de la récupération des rôles :", err);
-        res.status(500).json({ error: err.message });
-    }
-};
-
-module.exports = { getRoles };
 
 module.exports = { assignRole };
