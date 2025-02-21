@@ -6,7 +6,7 @@ const checkRole = require("../middlewares/checkRole");
 const router = express.Router();
 
 // ✅ Récupérer la liste des rôles
-router.get("/", authenticateToken, checkRole("admin"), getRoles);
+router.get("/", authenticateToken, checkRole("admin, super_admin"), getRoles);
 
 // ✅ Un super admin peut attribuer n'importe quel rôle
 // ✅ Un admin peut attribuer des rôles INFÉRIEURS à lui
