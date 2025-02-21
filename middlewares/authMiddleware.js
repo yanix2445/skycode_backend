@@ -13,8 +13,17 @@ const authenticateToken = (req, res, next) => {
 
     try {
         const verified = jwt.verify(token, process.env.JWT_SECRET);
-        req.user = verified; // Stocke les infos de l'utilisateur dans `req`
-        next();
+        req.user = verified;
+
+        // 🔥 Ajoute cette requête pour récupérer le role_id de la DB
+        pool.query("SELECT role_id FROM users WHERE id = $1", [req.user.id], (err, result) => {
+            if (err || result.rows.length === 0) {
+                return res.status(403).json({ error: "Accès refusé. Aucun rôle attribué." });
+            }
+            req.user.role_id = result.rows[0].role_id;
+            next();
+        });
+
     } catch (err) {
         res.status(403).json({ error: "Token invalide" });
     }

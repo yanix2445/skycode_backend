@@ -1,12 +1,10 @@
-const checkRole = (...allowedRoles) => {
+const checkRole = (requiredRoleLevel) => {
     return (req, res, next) => {
-        const userRoleId = req.user.role_id; // Récupère le rôle du token JWT
-
-        if (!userRoleId) {
+        if (!req.user || !req.user.role_id) {
             return res.status(403).json({ error: "Accès refusé. Aucun rôle attribué." });
         }
 
-        if (!allowedRoles.includes(userRoleId)) {
+        if (req.user.role_id < requiredRoleLevel) {
             return res.status(403).json({ error: "Accès refusé. Permission insuffisante." });
         }
 
