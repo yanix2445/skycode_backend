@@ -4,32 +4,85 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 
+const { pool } = require("../config/database");
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+require("dotenv").config();
+
+// ✅ Inscription d'un utilisateur
 const signup = async (req, res) => {
     try {
-        const { name, email, password } = req.body;
+        const { name, email, password, role_id } = req.body;
 
-        // 🔹 Par défaut, un utilisateur a le rôle "user" (role_id = 0 d'après ta DB)
-        const defaultRoleId = 0;
+        // Vérifier si l'utilisateur existe déjà
+        const existingUser = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
+        if (existingUser.rows.length > 0) {
+            return res.status(400).json({ error: "Cet email est déjà utilisé." });
+        }
 
-        // 🔹 Hachage du mot de passe
+        // Hasher le mot de passe
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // 🔹 Insertion de l'utilisateur dans la base de données
+        // 🔹 Vérifier si un rôle a été fourni, sinon attribuer "user" par défaut
+        let assignedRoleId = role_id;
+        if (!role_id) {
+            const defaultRole = await pool.query("SELECT id FROM roles WHERE alias = 'user' LIMIT 1");
+            assignedRoleId = defaultRole.rows.length > 0 ? defaultRole.rows[0].id : 1; // Par défaut, 1 si user(0) ne passe pas
+        }
+
+        // Insérer l'utilisateur dans la DB
         const result = await pool.query(
-            "INSERT INTO users (name, email, password, role_id) VALUES ($1, $2, $3, $4) RETURNING *",
-            [name, email, hashedPassword, defaultRoleId]
+            "INSERT INTO users (name, email, password, role_id, status) VALUES ($1, $2, $3, $4, 'active') RETURNING *",
+            [name, email, hashedPassword, assignedRoleId]
+        );
+
+        // Générer un token JWT
+        const user = result.rows[0];
+        const accessToken = jwt.sign(
+            { id: user.id, email: user.email, role_id: user.role_id },
+            process.env.JWT_SECRET,
+            { expiresIn: "7d" }
         );
 
         res.status(201).json({
             message: "Utilisateur créé avec succès",
-            user: result.rows[0],
+            user: {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                role_id: user.role_id,
+            },
+            accessToken,
         });
 
     } catch (err) {
         console.error("❌ Erreur lors de l'inscription :", err);
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: "Erreur interne du serveur." });
     }
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 const login = async (req, res) => {
     try {
