@@ -76,12 +76,22 @@ const deleteUser = async (req, res) => {
     try {
         const { id } = req.params;
 
+        // Vérifier si l'utilisateur existe avant suppression
+        const userCheck = await pool.query("SELECT * FROM users WHERE id = $1", [id]);
+        if (userCheck.rows.length === 0) {
+            return res.status(404).json({ error: "Utilisateur introuvable" });
+        }
+
+        // Supprimer l'utilisateur
         await pool.query("DELETE FROM users WHERE id = $1", [id]);
 
         res.json({ message: "Utilisateur supprimé avec succès" });
     } catch (err) {
+        console.error("❌ Erreur lors de la suppression de l'utilisateur :", err);
         res.status(500).json({ error: err.message });
     }
 };
+
+
 
 module.exports = { getAllUsers, getUserById, updateUser, deleteUser };
