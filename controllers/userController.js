@@ -1,6 +1,7 @@
 const { pool } = require("../config/database");
 
-const getUsers = async (req, res) => {
+// ✅ Récupérer tous les utilisateurs (Admins et Managers)
+const getAllUsers = async (req, res) => {
     try {
         const result = await pool.query(`
             SELECT u.id, u.name, u.email, u.role_id, 
