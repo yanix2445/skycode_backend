@@ -15,7 +15,8 @@ const authenticateToken = (req, res, next) => {
         const verified = jwt.verify(token, process.env.JWT_SECRET);
         req.user = verified;
 
-        // ✅ Vérifie si req.user a bien un role_id
+        console.log("🛠️ Utilisateur authentifié :", req.user); // 🔥 Ajoute ça pour voir le `role_id`
+
         if (!req.user.role_id) {
             return res.status(403).json({ error: "Accès refusé. Aucun rôle attribué." });
         }
