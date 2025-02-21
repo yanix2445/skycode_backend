@@ -76,10 +76,15 @@ const deleteUser = async (req, res) => {
     try {
         const { id } = req.params;
 
-        // Vérifier si l'utilisateur existe avant suppression
+        // Vérifier si l'utilisateur existe
         const userCheck = await pool.query("SELECT * FROM users WHERE id = $1", [id]);
         if (userCheck.rows.length === 0) {
             return res.status(404).json({ error: "Utilisateur introuvable" });
+        }
+
+        // Vérifier que l'utilisateur connecté a bien les droits pour supprimer
+        if (req.user.role_id < 6) { // Seul un rôle admin (6) ou super admin (7) peut supprimer
+            return res.status(403).json({ error: "Accès refusé. Permission insuffisante." });
         }
 
         // Supprimer l'utilisateur
