@@ -5,6 +5,7 @@ const cors = require("cors");
 const { connectDB } = require("./config/database");
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
+const roleRoutes = require("./routes/roleRoutes");
 
 const app = express();
 app.use(cors());
@@ -16,7 +17,7 @@ connectDB();
 // Chargement des routes
 app.use("/auth", authRoutes);
 app.use("/users", userRoutes);
-
+app.use("/roles", roleRoutes);
 app.get("/", (req, res) => {
     res.send("🚀 API backend en ligne !");
 });
