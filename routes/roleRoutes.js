@@ -1,11 +1,14 @@
 const express = require("express");
-const { getAllRoles } = require("../controllers/roleController");
+const { getAllRoles, assignRole } = require("../controllers/roleController"); // Vérifie bien cette ligne
 const { authenticateToken } = require("../middlewares/authMiddleware");
 const checkRole = require("../middlewares/checkRole");
 
 const router = express.Router();
 
-// 🚨 Seuls les Super Admins et Admins peuvent voir tous les rôles
+// ✅ Route pour récupérer tous les rôles (réservée aux Super Admins et Admins)
 router.get("/", authenticateToken, checkRole(6), getAllRoles);
+
+// ✅ Route pour assigner un rôle à un utilisateur (Super Admin ou Admin)
+router.post("/assign", authenticateToken, checkRole(6), assignRole);
 
 module.exports = router;
