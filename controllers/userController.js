@@ -1,6 +1,6 @@
 const { pool } = require("../config/database");
 
-// ✅ Récupérer tous les utilisateurs (Admins et Managers)
+// ✅ Récupérer tous les utilisateurs 
 const getAllUsers = async (req, res) => {
     try {
         const result = await pool.query(`
@@ -48,15 +48,25 @@ const getUserById = async (req, res) => {
 const updateUser = async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, email, role } = req.body;
+        const { name, email, role_id } = req.body; // Mettre à jour role_id au lieu de role
 
         const updatedUser = await pool.query(
-            "UPDATE users SET name = COALESCE($1, name), email = COALESCE($2, email), role = COALESCE($3, role) WHERE id = $4 RETURNING id, name, email, role",
-            [name, email, role, id]
+            `UPDATE users 
+             SET name = COALESCE($1, name), 
+                 email = COALESCE($2, email), 
+                 role_id = COALESCE($3, role_id) 
+             WHERE id = $4 
+             RETURNING id, name, email, role_id`,
+            [name, email, role_id, id]
         );
+
+        if (updatedUser.rows.length === 0) {
+            return res.status(404).json({ error: "Utilisateur introuvable" });
+        }
 
         res.json({ message: "Utilisateur mis à jour avec succès", user: updatedUser.rows[0] });
     } catch (err) {
+        console.error("❌ Erreur lors de la mise à jour de l'utilisateur :", err);
         res.status(500).json({ error: err.message });
     }
 };
