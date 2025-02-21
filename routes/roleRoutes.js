@@ -6,9 +6,9 @@ const checkRole = require("../middlewares/checkRole");
 const router = express.Router();
 
 // ✅ Route pour récupérer tous les rôles (réservée aux Super Admins et Admins)
-router.get("/", authenticateToken, checkRole(6), getAllRoles);
+router.get("/", authenticateToken, checkRole, getAllRoles);
 
 // ✅ Route pour assigner un rôle à un utilisateur (Super Admin ou Admin)
-router.post("/assign", authenticateToken, checkRole(6), assignRole);
+router.post("/assign", authenticateToken, checkRole, assignRole);
 
 module.exports = router;
