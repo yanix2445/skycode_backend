@@ -4,12 +4,6 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 
-const { pool } = require("../config/database");
-const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken");
-require("dotenv").config();
-
-// ✅ Inscription d'un utilisateur
 const signup = async (req, res) => {
     try {
         const { name, email, password, role_id } = req.body;
@@ -60,13 +54,6 @@ const signup = async (req, res) => {
         res.status(500).json({ error: "Erreur interne du serveur." });
     }
 };
-
-
-
-
-
-
-
 
 
 
