@@ -12,8 +12,8 @@ const checkRole = (...allowedRoles) => {
             return res.status(403).json({ error: "Accès refusé. Aucun rôle attribué." });
         }
 
-        // ✅ Vérification correcte avec `role_name`
-        if (!allowedRoles.includes(req.user.role_name)) {
+        // 🔥 Vérification basée sur `role_id` et non `role_name`
+        if (!allowedRoles.includes(req.user.role_id)) {
             console.log("❌ Accès refusé - Permission insuffisante");
             return res.status(403).json({ error: "Accès refusé. Permission insuffisante." });
         }
