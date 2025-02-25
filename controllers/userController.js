@@ -116,11 +116,11 @@ const deleteUser = async (req, res) => {
 
         // 🚨 Vérification : Un `admin` ne peut supprimer que des rôles inférieurs
         if (requesterRole === 2) { // Admin
-            if (targetUser.role_id >= requesterRole) {
+            if (targetUser.role_id >= requesterRole) { // Si l'admin essaie de supprimer un admin ou plus haut
                 return res.status(403).json({ error: "Un admin ne peut supprimer que des utilisateurs de niveau inférieur." });
             }
         }
-
+        
         // ✅ Suppression de l’utilisateur
         await pool.query("DELETE FROM users WHERE id = $1", [id]);
 
