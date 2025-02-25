@@ -6,5 +6,5 @@ const checkRole = require("../middlewares/checkRole");
 const router = express.Router();
 
 // ✅ Assure-toi que cette route est bien déclarée
-router.get("/", authenticateToken, checkRole(2), getAllRoles);
+router.get("/", authenticateToken, checkRole("admin", "super_admin"), getAllRoles);
 module.exports = router;
