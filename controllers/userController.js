@@ -96,36 +96,43 @@ const updateUser = async (req, res) => {
 const deleteUser = async (req, res) => {
     try {
         const { id } = req.params; // ID de l'utilisateur à supprimer
-        const requesterId = req.user.id; // ID de l'admin qui fait la demande
+        const requesterId = req.user.id; // ID de celui qui fait la requête
         const requesterRoleId = req.user.role_id; // Rôle de celui qui fait la requête
 
-        // Récupérer le rôle de l'utilisateur cible
-        const userResult = await pool.query("SELECT role_id FROM users WHERE id = $1", [id]);
+        console.log(`🗑️ Tentative de suppression de l'ID: ${id} par l'ID: ${requesterId} (Role: ${requesterRoleId})`);
+
+        // Vérifier si l'utilisateur à supprimer existe
+        const userResult = await pool.query("SELECT id, role_id FROM users WHERE id = $1", [id]);
 
         if (userResult.rows.length === 0) {
+            console.log("❌ Utilisateur introuvable.");
             return res.status(404).json({ error: "Utilisateur introuvable." });
         }
 
-        const targetRoleId = userResult.rows[0].role_id;
+        const targetUser = userResult.rows[0];
+        const targetRoleId = targetUser.role_id;
 
-        console.log(`🗑️ Tentative de suppression - ID: ${id}, Rôle cible: ${targetRoleId}`);
-        console.log(`🛠️ Admin qui supprime - ID: ${requesterId}, Rôle: ${requesterRoleId}`);
+        console.log(`🎯 Utilisateur cible - ID: ${targetUser.id}, Role: ${targetRoleId}`);
+        console.log(`🔎 Admin exécutant - ID: ${requesterId}, Role: ${requesterRoleId}`);
 
-        // Vérification des permissions
-        if (requesterRoleId === 1) { // Super Admin peut tout supprimer
+        // 🚨 Logique de permission
+        if (requesterRoleId === 1) { // Super Admin peut supprimer tout le monde
             console.log("✅ Super Admin suppression autorisée !");
-        } else if (requesterRoleId === 2) { // Admin
-            if (targetRoleId < 2) {
+        } else if (requesterRoleId === 2) { // Admin peut supprimer uniquement des users normaux
+            if (targetRoleId > 2) { // Vérifie que la cible a un rôle inférieur (user)
                 console.log("✅ Admin peut supprimer cet utilisateur !");
             } else {
+                console.log("❌ Admin ne peut pas supprimer un autre admin ou super admin.");
                 return res.status(403).json({ error: "Un admin ne peut supprimer que des utilisateurs de niveau inférieur." });
             }
         } else {
+            console.log("❌ Accès refusé - Rôle insuffisant.");
             return res.status(403).json({ error: "Accès refusé. Seul un admin ou super admin peut supprimer un utilisateur." });
         }
 
         // Suppression de l'utilisateur
         await pool.query("DELETE FROM users WHERE id = $1", [id]);
+        console.log("✅ Utilisateur supprimé avec succès !");
         res.json({ message: "Utilisateur supprimé avec succès" });
 
     } catch (err) {
@@ -133,5 +140,4 @@ const deleteUser = async (req, res) => {
         res.status(500).json({ error: "Erreur serveur lors de la suppression de l'utilisateur." });
     }
 };
-
 module.exports = { getAllUsers, getUserById, updateUser, deleteUser };
