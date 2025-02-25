@@ -1,6 +1,6 @@
 const checkRole = (requiredRole) => {
     return (req, res, next) => {
-        console.log(`🔍 Vérification du rôle - Utilisateur: ${req.user.id}, Role ID: ${req.user.role_id}, Required: ${requiredRole}`);
+        console.log(`🔍 Vérification du rôle - Utilisateur: ${req.user.id}, Role ID: ${req.user.role_alias}, Required: ${requiredRole}`);
 
         if (!req.user || !req.user.role_id) {
             return res.status(403).json({ error: "Accès refusé. Aucun rôle attribué." });
