@@ -126,7 +126,7 @@ const deleteUser = async (req, res) => {
             }
             console.log("✅ Super Admin suppression autorisée !");
         } else if (requesterRoleId === 2) { // Admin
-            if (targetRoleId >= 2) {
+            if (targetRoleId <= 2) { // ✅ Fix ici : Admin ne peut pas supprimer un autre Admin ou plus haut
                 return res.status(403).json({ error: "Un Admin ne peut supprimer que des utilisateurs de niveau inférieur." });
             }
             console.log("✅ Admin peut supprimer cet utilisateur !");
@@ -145,7 +145,6 @@ const deleteUser = async (req, res) => {
         res.status(500).json({ error: "Erreur serveur lors de la suppression de l'utilisateur." });
     }
 };
-
 
 
 
