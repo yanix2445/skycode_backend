@@ -27,17 +27,6 @@ const authenticateToken = (req, res, next) => {
     }
 };
 
-/**
- * ✅ Middleware de rôle : Vérifie si l'utilisateur a le bon rôle pour accéder à une route.
- * @param {...string} roles Liste des rôles autorisés (ex: ["admin", "super_admin"])
- */
-const checkRole = (...roles) => {
-    return (req, res, next) => {
-        if (!req.user || !roles.includes(req.user.role)) {
-            return res.status(403).json({ error: "Accès interdit. Permission insuffisante." });
-        }
-        next();
-    };
-};
 
-module.exports = { authenticateToken, checkRole };
+
+module.exports = { authenticateToken };

@@ -1,17 +1,16 @@
-const checkRole = (requiredRole) => {
+const checkRole = (...allowedRoles) => {
     return (req, res, next) => {
-        console.log(`🔍 Vérification du rôle - Utilisateur: ${req.user.id}, Role alias: ${req.user.role_alias}, Required: ${requiredRole}`);
+        console.log(`🔍 Vérification du rôle - Utilisateur: ${req.user.id}, Role alias: ${req.user.role_alias}, Requis: ${allowedRoles}`);
 
-        if (!req.user || !req.user.role_id) {
+        if (!req.user || !req.user.role_alias) {
             return res.status(403).json({ error: "Accès refusé. Aucun rôle attribué." });
         }
 
-        // ✅ Seuls les rôles inférieurs ou égaux au rôle requis sont acceptés
-        if (req.user.role_alias > requiredRole) {
+        if (!allowedRoles.includes(req.user.role_alias)) {
             return res.status(403).json({ error: "Accès refusé. Permission insuffisante." });
         }
 
-        next();
+        next(); // ✅ L'utilisateur a le bon rôle, on continue
     };
 };
 
