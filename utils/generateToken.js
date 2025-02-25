@@ -3,9 +3,15 @@ const jwt = require("jsonwebtoken");
 // ✅ Fonction pour générer un accessToken (valable 7 jours)
 const generateAccessToken = (user) => {
     return jwt.sign(
-        { id: user.id, email: user.email, role_id: user.role_id  },
+        {
+            id: user.id,
+            email: user.email,
+            role_id: user.role_id,
+            role_alias: user.role_alias,  
+            role_name: user.role_name    
+        },
         process.env.JWT_SECRET,
-        { expiresIn: "7d" } // Token valide 7 jours
+        { expiresIn: "7d" }
     );
 };
 
