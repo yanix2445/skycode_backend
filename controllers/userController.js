@@ -44,7 +44,6 @@ const getUserById = async (req, res) => {
     }
 };
 
-const { pool } = require("../config/database");
 
 // ✅ Modifier un utilisateur (seulement accessible par admin et super_admin)
 const updateUser = async (req, res) => {
