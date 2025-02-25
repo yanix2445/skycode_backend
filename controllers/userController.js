@@ -48,23 +48,46 @@ const getUserById = async (req, res) => {
 const updateUser = async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, email, role_id } = req.body; // Mettre à jour role_id au lieu de role
+        const { name, email, role_id } = req.body;
+        const requesterRole = req.user.role_id; // Récupère le rôle de celui qui fait la requête
 
+        console.log(`🛠️ Mise à jour de l'utilisateur ${id} par ${req.user.id} (Rôle: ${requesterRole})`);
+
+        // Vérifier si l'utilisateur existe
+        const userResult = await pool.query("SELECT * FROM users WHERE id = $1", [id]);
+        if (userResult.rows.length === 0) {
+            return res.status(404).json({ error: "Utilisateur introuvable." });
+        }
+
+        // Vérifier si on essaie de modifier le rôle
+        if (role_id !== undefined) {
+            console.log(`🔍 Tentative d'attribution du rôle ${role_id} à ${id}`);
+
+            // Vérifie si le rôle demandé existe
+            const roleCheck = await pool.query("SELECT * FROM roles WHERE id = $1", [role_id]);
+            if (roleCheck.rows.length === 0) {
+                return res.status(400).json({ error: "Le rôle spécifié n'existe pas." });
+            }
+
+            // Vérifie si le demandeur a le droit d'attribuer ce rôle
+            if (requesterRole > 2) {
+                return res.status(403).json({ error: "Accès refusé. Seuls les Admins et Super Admins peuvent attribuer des rôles." });
+            }
+            if (requesterRole >= role_id) {
+                return res.status(403).json({ error: "Accès refusé. Vous ne pouvez pas attribuer un rôle égal ou supérieur au vôtre." });
+            }
+        }
+
+        // Mise à jour des informations
         const updatedUser = await pool.query(
-            `UPDATE users 
-             SET name = COALESCE($1, name), 
-                 email = COALESCE($2, email), 
-                 role_id = COALESCE($3, role_id) 
-             WHERE id = $4 
-             RETURNING id, name, email, role_id`,
+            "UPDATE users SET name = COALESCE($1, name), email = COALESCE($2, email), role_id = COALESCE($3, role_id) WHERE id = $4 RETURNING id, name, email, role_id",
             [name, email, role_id, id]
         );
 
-        if (updatedUser.rows.length === 0) {
-            return res.status(404).json({ error: "Utilisateur introuvable" });
-        }
+        console.log(`✅ Mise à jour réussie pour l'utilisateur ${id}`);
 
         res.json({ message: "Utilisateur mis à jour avec succès", user: updatedUser.rows[0] });
+
     } catch (err) {
         console.error("❌ Erreur lors de la mise à jour de l'utilisateur :", err);
         res.status(500).json({ error: err.message });

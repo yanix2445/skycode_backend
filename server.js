@@ -18,6 +18,8 @@ connectDB();
 app.use("/auth", authRoutes);
 app.use("/users", userRoutes);
 app.use("/roles", roleRoutes);
+
+
 app.get("/", (req, res) => {
     res.send("🚀 API backend en ligne !");
 });
