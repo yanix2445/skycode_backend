@@ -101,7 +101,7 @@ const deleteUser = async (req, res) => {
 
         console.log(`🗑️ Tentative de suppression de l'ID: ${id} par l'ID: ${requesterId} (Role: ${requesterRoleId})`);
 
-        // Vérifier si l'utilisateur à supprimer existe
+        // Vérifier si l'utilisateur cible existe
         const userResult = await pool.query("SELECT id, role_id FROM users WHERE id = $1", [id]);
 
         if (userResult.rows.length === 0) {
@@ -115,19 +115,24 @@ const deleteUser = async (req, res) => {
         console.log(`🎯 Utilisateur cible - ID: ${targetUser.id}, Role: ${targetRoleId}`);
         console.log(`🔎 Admin exécutant - ID: ${requesterId}, Role: ${requesterRoleId}`);
 
-        // 🚨 Logique de permission
-        if (requesterRoleId === 1) { // Super Admin peut supprimer tout le monde
-            console.log("✅ Super Admin suppression autorisée !");
-        } else if (requesterRoleId === 2) { // Admin peut supprimer uniquement des users normaux
-            if (targetRoleId > 2) { // Vérifie que la cible a un rôle inférieur (user)
-                console.log("✅ Admin peut supprimer cet utilisateur !");
-            } else {
-                console.log("❌ Admin ne peut pas supprimer un autre admin ou super admin.");
-                return res.status(403).json({ error: "Un admin ne peut supprimer que des utilisateurs de niveau inférieur." });
+        // 🚨 Vérification des permissions
+        if (requesterId === targetUser.id) {
+            return res.status(403).json({ error: "Vous ne pouvez pas supprimer votre propre compte." });
+        }
+
+        if (requesterRoleId === 1) { // Super Admin
+            if (targetRoleId === 1) {
+                return res.status(403).json({ error: "Un Super Admin ne peut pas supprimer un autre Super Admin." });
             }
+            console.log("✅ Super Admin suppression autorisée !");
+        } else if (requesterRoleId === 2) { // Admin
+            if (targetRoleId >= 2) {
+                return res.status(403).json({ error: "Un Admin ne peut supprimer que des utilisateurs de niveau inférieur." });
+            }
+            console.log("✅ Admin peut supprimer cet utilisateur !");
         } else {
             console.log("❌ Accès refusé - Rôle insuffisant.");
-            return res.status(403).json({ error: "Accès refusé. Seul un admin ou super admin peut supprimer un utilisateur." });
+            return res.status(403).json({ error: "Accès refusé. Seuls les Admins et Super Admins peuvent supprimer un utilisateur." });
         }
 
         // Suppression de l'utilisateur
@@ -140,4 +145,12 @@ const deleteUser = async (req, res) => {
         res.status(500).json({ error: "Erreur serveur lors de la suppression de l'utilisateur." });
     }
 };
+
+
+
+
+
+
+
+
 module.exports = { getAllUsers, getUserById, updateUser, deleteUser };
