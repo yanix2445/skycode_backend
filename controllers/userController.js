@@ -44,47 +44,35 @@ const getUserById = async (req, res) => {
     }
 };
 
-// ✅ Mettre à jour un utilisateur (Admin uniquement)
+const { pool } = require("../config/database");
+
+// ✅ Modifier un utilisateur (seulement accessible par admin et super_admin)
 const updateUser = async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, email, role_id } = req.body;
-        const requesterRole = req.user.role_id; // Récupère le rôle de celui qui fait la requête
+        const { name, email } = req.body;
+        const requesterRole = req.user.role_id; // Rôle de celui qui fait la requête
 
-        console.log(`🛠️ Mise à jour de l'utilisateur ${id} par ${req.user.id} (Rôle: ${requesterRole})`);
+        console.log(`🔍 Tentative de modification de l'utilisateur ${id} par ${req.user.id}`);
 
         // Vérifier si l'utilisateur existe
-        const userResult = await pool.query("SELECT * FROM users WHERE id = $1", [id]);
+        const userResult = await pool.query("SELECT id, role_id FROM users WHERE id = $1", [id]);
         if (userResult.rows.length === 0) {
-            return res.status(404).json({ error: "Utilisateur introuvable." });
+            return res.status(404).json({ error: "Utilisateur introuvable" });
         }
 
-        // Vérifier si on essaie de modifier le rôle
-        if (role_id !== undefined) {
-            console.log(`🔍 Tentative d'attribution du rôle ${role_id} à ${id}`);
+        const targetUser = userResult.rows[0];
 
-            // Vérifie si le rôle demandé existe
-            const roleCheck = await pool.query("SELECT * FROM roles WHERE id = $1", [role_id]);
-            if (roleCheck.rows.length === 0) {
-                return res.status(400).json({ error: "Le rôle spécifié n'existe pas." });
-            }
-
-            // Vérifie si le demandeur a le droit d'attribuer ce rôle
-            if (requesterRole > 2) {
-                return res.status(403).json({ error: "Accès refusé. Seuls les Admins et Super Admins peuvent attribuer des rôles." });
-            }
-            if (requesterRole >= role_id) {
-                return res.status(403).json({ error: "Accès refusé. Vous ne pouvez pas attribuer un rôle égal ou supérieur au vôtre." });
-            }
+        // 🚨 Empêcher un admin de modifier un super_admin
+        if (requesterRole === 2 && targetUser.role_id === 1) {
+            return res.status(403).json({ error: "Un admin ne peut pas modifier un super_admin." });
         }
 
-        // Mise à jour des informations
+        // ✅ Mise à jour de l'utilisateur
         const updatedUser = await pool.query(
-            "UPDATE users SET name = COALESCE($1, name), email = COALESCE($2, email), role_id = COALESCE($3, role_id) WHERE id = $4 RETURNING id, name, email, role_id",
-            [name, email, role_id, id]
+            "UPDATE users SET name = COALESCE($1, name), email = COALESCE($2, email) WHERE id = $3 RETURNING id, name, email, role_id",
+            [name, email, id]
         );
-
-        console.log(`✅ Mise à jour réussie pour l'utilisateur ${id}`);
 
         res.json({ message: "Utilisateur mis à jour avec succès", user: updatedUser.rows[0] });
 
@@ -93,6 +81,8 @@ const updateUser = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 };
+
+module.exports = { updateUser };
 
 // ✅ Supprimer un utilisateur (Admin uniquement)
 const deleteUser = async (req, res) => {

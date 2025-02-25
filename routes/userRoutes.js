@@ -5,8 +5,8 @@ const checkRole = require("../middlewares/checkRole");
 
 const router = express.Router();
 
-router.get("/", authenticateToken, checkRole(2, 1), getAllUsers); // System Administrator (2) et Super Administrator (1) peuvent accéderrouter.get("/:id", authenticateToken, getUserById); // Tout utilisateur peut voir son profil
-router.put("/:id", authenticateToken, checkRole("admin"), updateUser); // Seul l'admin peut modifier un utilisateur
-router.delete("/:id", authenticateToken, checkRole("super_admin"), deleteUser); // Seul le super admin peut supprimer un utilisateur
+router.get("/", authenticateToken, checkRole(2, 1), getAllUsers); // System Administrator (2) et Super Administrator (1) 
+router.put("/:id", authenticateToken, checkRole(2, 1), updateUser); 
+router.delete("/:id", authenticateToken, checkRole(2, 1), deleteUser); 
 
 module.exports = router;
