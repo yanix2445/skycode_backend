@@ -104,7 +104,7 @@ const logout = async (req, res) => {
 };
 
 
-const refreshTokenHandler = async (req, res) => {
+const refreshToken = async (req, res) => {
     try {
         const { refreshToken } = req.body;
         if (!refreshToken) {
