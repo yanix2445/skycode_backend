@@ -74,12 +74,12 @@ const login = async (req, res) => {
         const accessToken = generateAccessToken(user);
         const refreshToken = generateRefreshToken();
 
-        // ✅ Supprimer l'ancien refreshToken s'il existe
+        // ✅ Supprimer l'ancien refreshToken avant d'insérer le nouveau
         await pool.query("DELETE FROM refresh_tokens WHERE user_id = $1", [user.id]);
 
-        // ✅ Insérer le nouveau refreshToken dans la table `refresh_tokens`
+        // ✅ Insérer le nouveau refreshToken
         await pool.query(
-            "INSERT INTO refresh_tokens (user_id, token) VALUES ($1, $2)", 
+            "INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES ($1, $2, NOW() + INTERVAL '90 days')", 
             [user.id, refreshToken]
         );
 
