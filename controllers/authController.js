@@ -117,33 +117,50 @@ const refreshToken = async (req, res) => {
             return res.status(400).json({ error: "Token manquant." });
         }
 
-        // Vérifie si le token existe et n'est pas expiré
+        console.log("🔍 RefreshToken reçu:", refreshToken);
+
+        // Vérifie si le token existe
         const tokenResult = await pool.query(
-            "SELECT * FROM refresh_tokens WHERE token = $1 AND expires_at > NOW()", 
+            "SELECT user_id, token, expires_at FROM refresh_tokens WHERE token = $1",
             [refreshToken]
         );
-        console.log("🔍 Token en base:", tokenResult.rows[0]);
-        
+
+        console.log("🔍 Token en base:", tokenResult.rows);
+
         if (tokenResult.rows.length === 0) {
-            return res.status(403).json({ error: "Token invalide ou expiré." });
+            return res.status(403).json({ error: "Token invalide." });
         }
 
-        // Génère un nouvel accessToken
-        const userId = tokenResult.rows[0].user_id;
-        const userResult = await pool.query("SELECT * FROM users WHERE id = $1", [userId]);
+        // Récupération des infos du token
+        const tokenInDb = tokenResult.rows[0];
+        console.log("🔍 Info du token récupéré:", tokenInDb);
+
+        // Vérification de l'expiration du refreshToken
+        if (new Date(tokenInDb.expires_at) < new Date()) {
+            console.log("⏳ RefreshToken expiré !");
+            await pool.query("DELETE FROM refresh_tokens WHERE token = $1", [refreshToken]);
+            return res.status(403).json({ error: "Token expiré." });
+        }
+
+        // Récupérer les informations de l'utilisateur
+        const userResult = await pool.query("SELECT * FROM users WHERE id = $1", [tokenInDb.user_id]);
 
         if (userResult.rows.length === 0) {
+            console.log("❌ Utilisateur introuvable !");
             return res.status(403).json({ error: "Utilisateur introuvable." });
         }
 
         const user = userResult.rows[0];
+
+        // Générer un nouvel accessToken
         const newAccessToken = generateAccessToken(user);
 
-        res.json({ accessToken: newAccessToken });
+        console.log("✅ Nouveau accessToken généré avec succès !");
+        return res.json({ accessToken: newAccessToken });
 
     } catch (err) {
         console.error("❌ Erreur lors du rafraîchissement du token :", err);
-        res.status(500).json({ error: "Erreur serveur lors du rafraîchissement du token." });
+        return res.status(500).json({ error: "Erreur serveur lors du rafraîchissement du token." });
     }
 };
 
