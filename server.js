@@ -1,27 +1,25 @@
-require("dotenv").config();
 const express = require("express");
+const dotenv = require("dotenv");
 const cors = require("cors");
 
-const { connectDB } = require("./config/database");
+// Importation des routes
 const authRoutes = require("./routes/authRoutes");
-const userRoutes = require("./routes/userRoutes");
-const roleRoutes = require("./routes/roleRoutes");
+const userRoutes = require("./routes/userRoutes"); // Ajoute bien ça
+
+dotenv.config();
 
 const app = express();
+
 app.use(cors());
 app.use(express.json());
 
-// Connexion à la base de données
-connectDB();
-
-// Chargement des routes
+// 🔗 Montage des routes
 app.use("/auth", authRoutes);
-app.use("/users", userRoutes);
-app.use("/roles", roleRoutes);
-app.use(userRoutes);
+app.use("/users", userRoutes); // Assure-toi que cette ligne est bien présente
 
-app.get("/", (req, res) => {
-    res.send("🚀 API backend en ligne !");
+// Gestion des erreurs 404
+app.use((req, res) => {
+    res.status(404).json({ error: "Route non trouvée" });
 });
 
 const PORT = process.env.PORT || 3000;
