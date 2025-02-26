@@ -70,6 +70,10 @@ const updateUser = async (req, res) => {
             return res.status(403).json({ error: "Un admin ne peut pas modifier un super_admin." });
         }
 
+        if (requesterRoleId !== 1 && requesterId !== parseInt(id)) {
+            return res.status(403).json({ error: "Vous ne pouvez modifier que votre propre profil." });
+        }
+
         // ✅ Mise à jour de l'utilisateur
         const updatedUser = await pool.query(
             "UPDATE users SET name = COALESCE($1, name), email = COALESCE($2, email) WHERE id = $3 RETURNING id, name, email, role_id",
@@ -118,6 +122,10 @@ const deleteUser = async (req, res) => {
         // 🚨 Vérification des permissions
         if (requesterId === targetUser.id) {
             return res.status(403).json({ error: "Vous ne pouvez pas supprimer votre propre compte." });
+        }
+
+        if (requesterId === targetUser.id && requesterRoleId === 1) {
+            return res.status(403).json({ error: "Un Super Admin ne peut pas supprimer son propre compte." });
         }
 
         if (requesterRoleId === 1) { // Super Admin
