@@ -19,7 +19,10 @@ const generateAccessToken = (user) => {
 
 // ✅ Générer un refreshToken sécurisé
 const generateRefreshToken = () => {
-    return crypto.randomBytes(64).toString("hex");
+    return {
+        token: require("crypto").randomBytes(64).toString("hex"),
+        expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000) // Expiration en 90 jours
+    };
 };
 
 

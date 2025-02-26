@@ -104,21 +104,24 @@ const logout = async (req, res) => {
 };
 
 
-const refreshToken = async (req, res) => {
+const refreshTokenHandler = async (req, res) => {
     try {
-        const { refreshToken } = req.body; // ✅ Assure-toi que le token est bien récupéré
+        const { refreshToken } = req.body;
         if (!refreshToken) {
             return res.status(400).json({ error: "Token manquant." });
         }
 
-        // Vérifie si le token existe en base
-        const tokenResult = await pool.query("SELECT * FROM refresh_tokens WHERE token = $1", [refreshToken]);
+        // Vérifie si le token existe et n'est pas expiré
+        const tokenResult = await pool.query(
+            "SELECT * FROM refresh_tokens WHERE token = $1 AND expires_at > NOW()", 
+            [refreshToken]
+        );
 
         if (tokenResult.rows.length === 0) {
             return res.status(403).json({ error: "Token invalide ou expiré." });
         }
 
-        // Si tout est bon, génère un nouveau accessToken
+        // Génère un nouvel accessToken
         const userId = tokenResult.rows[0].user_id;
         const userResult = await pool.query("SELECT * FROM users WHERE id = $1", [userId]);
 
