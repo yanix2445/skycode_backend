@@ -49,42 +49,48 @@ const getUserById = async (req, res) => {
 // ✅ Modifier un utilisateur (seulement accessible par admin et super_admin)
 const updateUser = async (req, res) => {
     try {
-        const { id } = req.params; // ID de l'utilisateur à modifier
+        const id = Number(req.params.id); // ID de l'utilisateur à modifier (converti en Number)
         const { name, email, password } = req.body;
-        const requesterId = req.user.id; // ID de celui qui fait la requête
-        const requesterRole = req.user.role_id; // Rôle de celui qui fait la requête
+        const requesterId = Number(req.user.id); // ID de l'utilisateur effectuant la requête
+        const requesterRole = req.user.role_id; // Rôle de l'utilisateur effectuant la requête
 
         console.log(`🔍 Tentative de modification de l'utilisateur ${id} par ${requesterId}`);
+        console.log(`📌 Rôle du requérant: ${requesterRole}`);
+        console.log(`📌 ID du requérant: ${requesterId}`);
+        console.log(`📌 Données reçues:`, req.body);
 
-        // Vérifier si l'utilisateur existe
+        // 🔍 Vérifier si l'utilisateur ciblé existe
         const userResult = await pool.query("SELECT id, role_id FROM users WHERE id = $1", [id]);
 
         if (userResult.rows.length === 0) {
-            return res.status(404).json({ error: "Utilisateur introuvable" });
+            console.log("❌ Utilisateur introuvable !");
+            return res.status(404).json({ error: "Utilisateur introuvable." });
         }
 
         const targetUser = userResult.rows[0];
 
-        // 🚨 Empêcher un utilisateur de modifier un autre profil (sauf Super Admin)
+        // 🚨 Restriction stricte : Un utilisateur ne peut modifier que son propre profil (sauf Super Admin)
         if (requesterId !== targetUser.id && requesterRole !== 1) {
+            console.log("⛔ Accès refusé: Tentative de modification d'un autre utilisateur.");
             return res.status(403).json({ error: "Vous ne pouvez modifier que votre propre profil." });
         }
 
         // 🚨 Un Admin ne peut pas modifier un Super Admin
         if (requesterRole === 2 && targetUser.role_id === 1) {
+            console.log("⛔ Accès refusé: Un Admin ne peut pas modifier un Super Admin.");
             return res.status(403).json({ error: "Un Admin ne peut pas modifier un Super Admin." });
         }
 
-        // 🚨 Un Super Admin ne peut pas modifier son propre profil via cet endpoint
-        if (requesterId === targetUser.id && requesterRole === 1) {
-            return res.status(403).json({ error: "Un Super Admin ne peut pas modifier son propre profil ici." });
+        // ✅ Un Super Admin peut modifier son propre profil (correction)
+        if (requesterRole === 1 && requesterId === targetUser.id) {
+            console.log("✅ Super Admin modifiant son propre profil.");
         }
 
+        // 🔄 Construction dynamique de la requête UPDATE
         let updatedFields = [];
         let updatedValues = [];
         let index = 1;
 
-        // Vérifier quels champs doivent être mis à jour
         if (name) {
             updatedFields.push(`name = $${index}`);
             updatedValues.push(name);
@@ -105,6 +111,7 @@ const updateUser = async (req, res) => {
         }
 
         if (updatedFields.length === 0) {
+            console.log("⚠️ Aucune donnée à mettre à jour.");
             return res.status(400).json({ error: "Aucune donnée à mettre à jour." });
         }
 
@@ -114,8 +121,9 @@ const updateUser = async (req, res) => {
         const query = `UPDATE users SET ${updatedFields.join(", ")} WHERE id = $${index} RETURNING id, name, email, role_id`;
         const updatedUser = await pool.query(query, updatedValues);
 
+        console.log(`✅ Mise à jour réussie pour l'utilisateur ${id}`);
         return res.json({
-            message: "Utilisateur mis à jour avec succès",
+            message: "Utilisateur mis à jour avec succès.",
             user: updatedUser.rows[0]
         });
 
