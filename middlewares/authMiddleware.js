@@ -1,14 +1,12 @@
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
 
-/**
- * ✅ Middleware d'authentification : Vérifie si le token JWT est valide.
- */
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers["authorization"];
     const token = authHeader && authHeader.split(" ")[1];
 
     if (!token) {
+        console.log("⚠ Aucun token fourni.");
         return res.status(401).json({ error: "Token manquant." });
     }
 
@@ -18,7 +16,7 @@ const authenticateToken = (req, res, next) => {
             return res.status(403).json({ error: "Token invalide ou expiré." });
         }
 
-        console.log(`🔑 Token valide pour l'utilisateur ID: ${user.id}`);
+        console.log(`✅ Token valide - Utilisateur ID: ${user.id}`);
         req.user = user;
         next();
     });
