@@ -17,24 +17,19 @@ const generateAccessToken = (user) => {
     );
 };
 
-// ✅ Générer un refreshToken sécurisé
+// ✅ Correction : Retourner uniquement une chaîne de caractères (et non un objet)
 const generateRefreshToken = () => {
-    console.log("🕒 Expiration du refreshToken:", new Date(Date.now() + 90 * 24 * 60 * 60 * 1000));
-    return {
-        token: require("crypto").randomBytes(64).toString("hex"),
-        expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),// Expiration en 90 jours
-
-    };
+    return crypto.randomBytes(64).toString("hex"); // Retourne juste un token string
 };
 
-
+// ✅ Supprimer les refreshTokens expirés toutes les 24h
 const cleanExpiredTokens = async () => {
     console.log("🧹 Début du nettoyage des refreshTokens expirés...");
     const result = await pool.query("DELETE FROM refresh_tokens WHERE expires_at < NOW()");
     console.log(`✅ Nettoyage terminé, tokens supprimés: ${result.rowCount}`);
 };
 
-// Exécuter toutes les 24h
+// Exécuter le nettoyage toutes les 24h
 setInterval(cleanExpiredTokens, 24 * 60 * 60 * 1000);
 
 module.exports = { generateAccessToken, generateRefreshToken };
