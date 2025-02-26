@@ -121,30 +121,34 @@ const deleteUser = async (req, res) => {
 
         // 🚨 Vérification des permissions
         if (requesterId === targetUser.id) {
+            console.log("⛔ Tentative de suppression de son propre compte !");
             return res.status(403).json({ error: "Vous ne pouvez pas supprimer votre propre compte." });
         }
 
-        if (requesterId === targetUser.id && requesterRoleId === 1) {
-            return res.status(403).json({ error: "Un Super Admin ne peut pas supprimer son propre compte." });
+        if (requesterRoleId === 1 && targetRoleId === 1) { // Super Admin vs Super Admin
+            console.log("⛔ Un Super Admin ne peut pas supprimer un autre Super Admin !");
+            return res.status(403).json({ error: "Un Super Admin ne peut pas supprimer un autre Super Admin." });
         }
 
-        if (requesterRoleId === 1) { // Super Admin
-            if (targetRoleId === 1) {
-                return res.status(403).json({ error: "Un Super Admin ne peut pas supprimer un autre Super Admin." });
-            }
-            console.log("✅ Super Admin suppression autorisée !");
-        } else if (requesterRoleId === 2) { // Admin
-            if (targetRoleId <= 2) { // ✅ Fix ici : Admin ne peut pas supprimer un autre Admin ou plus haut
+        if (requesterRoleId === 2) { // Admin
+            if (targetRoleId <= 2) { // Un Admin ne peut pas supprimer un autre Admin ou un Super Admin
+                console.log("⛔ Un Admin ne peut supprimer que des utilisateurs de niveau inférieur !");
                 return res.status(403).json({ error: "Un Admin ne peut supprimer que des utilisateurs de niveau inférieur." });
             }
             console.log("✅ Admin peut supprimer cet utilisateur !");
-        } else {
+        } else if (requesterRoleId !== 1) { // Seuls les Admins et Super Admins peuvent supprimer
             console.log("❌ Accès refusé - Rôle insuffisant.");
             return res.status(403).json({ error: "Accès refusé. Seuls les Admins et Super Admins peuvent supprimer un utilisateur." });
         }
 
-        // Suppression de l'utilisateur
+        // ✅ Supprimer tous les refreshTokens associés à l'utilisateur supprimé
+        console.log("🗑️ Suppression des refreshTokens associés à cet utilisateur...");
+        await pool.query("DELETE FROM refresh_tokens WHERE user_id = $1", [id]);
+
+        // ✅ Suppression de l'utilisateur
+        console.log("🚀 Suppression de l'utilisateur en base...");
         await pool.query("DELETE FROM users WHERE id = $1", [id]);
+
         console.log("✅ Utilisateur supprimé avec succès !");
         res.json({ message: "Utilisateur supprimé avec succès" });
 
@@ -153,7 +157,6 @@ const deleteUser = async (req, res) => {
         res.status(500).json({ error: "Erreur serveur lors de la suppression de l'utilisateur." });
     }
 };
-
 
 
 

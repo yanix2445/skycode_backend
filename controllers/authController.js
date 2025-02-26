@@ -93,7 +93,7 @@ const login = async (req, res) => {
 
 const logout = async (req, res) => {
     try {
-        // ✅ Supprimer le refreshToken du user
+        // ✅ Supprimer tous les refreshTokens associés à l'utilisateur
         await pool.query("DELETE FROM refresh_tokens WHERE user_id = $1", [req.user.id]);
 
         res.json({ message: "Déconnexion réussie" });
@@ -162,8 +162,11 @@ const changePassword = async (req, res) => {
         // Hacher le nouveau mot de passe
         const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-        // 🔥 Mettre à jour le mot de passe en base + Réinitialiser le Refresh Token
-        await pool.query("UPDATE users SET password = $1, refresh_token = NULL WHERE email = $2", [hashedPassword, email]);
+        // ✅ Supprimer tous les refreshTokens après un changement de mot de passe
+        await pool.query("DELETE FROM refresh_tokens WHERE user_id = $1", [user.id]);
+
+        // Mettre à jour le mot de passe
+        await pool.query("UPDATE users SET password = $1 WHERE id = $2", [hashedPassword, user.id]);
 
         console.log(`✅ Mot de passe changé avec succès pour ${email} (Toutes les sessions ont été invalidées)`);
 
