@@ -106,25 +106,22 @@ const logout = async (req, res) => {
 
 const refreshToken = async (req, res) => {
     try {
-        const { token } = req.body;
-        if (!token) {
-            return res.status(401).json({ error: "Token manquant." });
+        const { refreshToken } = req.body; // ✅ Assure-toi que le token est bien récupéré
+        if (!refreshToken) {
+            return res.status(400).json({ error: "Token manquant." });
         }
 
-        // ✅ Vérifier si le refreshToken existe dans la base de données
-        const result = await pool.query(
-            "INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES ($1, $2, NOW() + INTERVAL '90 days')",
-            [user.id, refreshToken]
-        );
+        // Vérifie si le token existe en base
+        const tokenResult = await pool.query("SELECT * FROM refresh_tokens WHERE token = $1", [refreshToken]);
 
-        if (result.rows.length === 0) {
-            return res.status(403).json({ error: "Refresh token invalide ou expiré." });
+        if (tokenResult.rows.length === 0) {
+            return res.status(403).json({ error: "Token invalide ou expiré." });
         }
 
-        const userId = result.rows[0].user_id;
-
-        // ✅ Récupérer les infos de l'utilisateur
+        // Si tout est bon, génère un nouveau accessToken
+        const userId = tokenResult.rows[0].user_id;
         const userResult = await pool.query("SELECT * FROM users WHERE id = $1", [userId]);
+
         if (userResult.rows.length === 0) {
             return res.status(403).json({ error: "Utilisateur introuvable." });
         }
