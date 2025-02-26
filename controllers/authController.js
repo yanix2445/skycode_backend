@@ -93,9 +93,14 @@ const login = async (req, res) => {
 
 const logout = async (req, res) => {
     try {
-        console.log(`🔌 Tentative de déconnexion pour l'utilisateur ID: ${req.user.id}`);
+        console.log(`🔌 Tentative de déconnexion pour l'utilisateur ID: ${req.user?.id || "inconnu"}`);
 
-        // ✅ Vérifier si un refreshToken existe pour cet utilisateur avant suppression
+        if (!req.user || !req.user.id) {
+            console.log("⚠ Erreur : Token JWT invalide ou utilisateur non trouvé.");
+            return res.status(401).json({ error: "Utilisateur non authentifié." });
+        }
+
+        // Vérifier si un refreshToken existe pour cet utilisateur
         const tokenCheck = await pool.query("SELECT * FROM refresh_tokens WHERE user_id = $1", [req.user.id]);
         if (tokenCheck.rows.length === 0) {
             console.log("⚠ Aucun refreshToken trouvé pour cet utilisateur.");
@@ -108,6 +113,7 @@ const logout = async (req, res) => {
 
         console.log(`✅ Déconnexion réussie pour l'utilisateur ID: ${req.user.id}`);
         res.json({ message: "Déconnexion réussie" });
+
     } catch (err) {
         console.error("❌ Erreur lors de la déconnexion :", err);
         res.status(500).json({ error: "Erreur serveur lors de la déconnexion." });
