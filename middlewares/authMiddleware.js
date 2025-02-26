@@ -25,10 +25,9 @@ const authenticateToken = (req, res, next) => {
         }
 
         console.log(`✅ JWT validé ! Utilisateur ID: ${user.id}`);
-        req.user = user;  // 📌 On attache l'utilisateur au `req`
+        req.user = user;
         next();
     });
 };
-
 
 module.exports = { authenticateToken };
