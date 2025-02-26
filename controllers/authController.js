@@ -112,7 +112,10 @@ const refreshToken = async (req, res) => {
         }
 
         // ✅ Vérifier si le refreshToken existe dans la base de données
-        const result = await pool.query("SELECT user_id FROM refresh_tokens WHERE token = $1", [token]);
+        const result = await pool.query(
+            "INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES ($1, $2, NOW() + INTERVAL '90 days')",
+            [user.id, refreshToken]
+        );
 
         if (result.rows.length === 0) {
             return res.status(403).json({ error: "Refresh token invalide ou expiré." });
