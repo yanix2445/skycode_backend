@@ -1,7 +1,7 @@
 const express = require("express");
 const { signup, login, logout, refreshToken , changePassword } = require("../controllers/authController");
 const { authenticateToken } = require("../middlewares/authMiddleware");
-const pool = require("../config/database"); // Assure-toi que c'est bien importé
+const { pool } = require("../config/database");
 
 const router = express.Router();
 
@@ -12,6 +12,7 @@ router.post("/refresh", refreshToken);
 router.post("/change-password", changePassword);
 router.get("/debug/tokens", authenticateToken, async (req, res) => {
   try {
+      console.log("🛠️ Récupération des refreshTokens en cours...");
       const result = await pool.query("SELECT * FROM refresh_tokens");
       res.json(result.rows);
   } catch (err) {
