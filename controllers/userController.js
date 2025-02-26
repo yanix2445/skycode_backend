@@ -49,53 +49,83 @@ const getUserById = async (req, res) => {
 // ✅ Modifier un utilisateur (seulement accessible par admin et super_admin)
 const updateUser = async (req, res) => {
     try {
-        const { id } = req.params;
-        const { name, email } = req.body;
+        const { id } = req.params; // ID de l'utilisateur à modifier
+        const { name, email, password } = req.body;
+        const requesterId = req.user.id; // ID de celui qui fait la requête
         const requesterRole = req.user.role_id; // Rôle de celui qui fait la requête
 
-        console.log(
-            `🔍 Tentative de modification de l'utilisateur ${id} par ${req.user.id}`
-        );
+        console.log(`🔍 Tentative de modification de l'utilisateur ${id} par ${requesterId}`);
 
         // Vérifier si l'utilisateur existe
-        const userResult = await pool.query(
-            "SELECT id, role_id FROM users WHERE id = $1",
-            [id]
-        );
+        const userResult = await pool.query("SELECT id, role_id FROM users WHERE id = $1", [id]);
+
         if (userResult.rows.length === 0) {
             return res.status(404).json({ error: "Utilisateur introuvable" });
         }
 
         const targetUser = userResult.rows[0];
 
-        // 🚨 Empêcher un admin de modifier un super_admin
-        if (req.user.role_id !== 1 && req.user.id !== id) {
-            return res
-                .status(403)
-                .json({ error: "Vous ne pouvez modifier que votre propre profil." });
+        // 🚨 Empêcher un utilisateur de modifier un autre profil (sauf Super Admin)
+        if (requesterId !== targetUser.id && requesterRole !== 1) {
+            return res.status(403).json({ error: "Vous ne pouvez modifier que votre propre profil." });
         }
 
-        if (req.user.role_id === 2 && targetUser.role_id === 1) {
-            return res
-                .status(403)
-                .json({ error: "Un Admin ne peut pas modifier un Super Admin." });
+        // 🚨 Un Admin ne peut pas modifier un Super Admin
+        if (requesterRole === 2 && targetUser.role_id === 1) {
+            return res.status(403).json({ error: "Un Admin ne peut pas modifier un Super Admin." });
         }
 
-        // ✅ Mise à jour de l'utilisateur
-        const updatedUser = await pool.query(
-            "UPDATE users SET name = COALESCE($1, name), email = COALESCE($2, email) WHERE id = $3 RETURNING id, name, email, role_id",
-            [name, email, id]
-        );
+        // 🚨 Un Super Admin ne peut pas modifier son propre profil via cet endpoint
+        if (requesterId === targetUser.id && requesterRole === 1) {
+            return res.status(403).json({ error: "Un Super Admin ne peut pas modifier son propre profil ici." });
+        }
 
-        res.json({
+        let updatedFields = [];
+        let updatedValues = [];
+        let index = 1;
+
+        // Vérifier quels champs doivent être mis à jour
+        if (name) {
+            updatedFields.push(`name = $${index}`);
+            updatedValues.push(name);
+            index++;
+        }
+
+        if (email) {
+            updatedFields.push(`email = $${index}`);
+            updatedValues.push(email);
+            index++;
+        }
+
+        if (password) {
+            const hashedPassword = await bcrypt.hash(password, 10);
+            updatedFields.push(`password = $${index}`);
+            updatedValues.push(hashedPassword);
+            index++;
+        }
+
+        if (updatedFields.length === 0) {
+            return res.status(400).json({ error: "Aucune donnée à mettre à jour." });
+        }
+
+        updatedValues.push(id);
+
+        // 🔐 Exécution de la requête sécurisée
+        const query = `UPDATE users SET ${updatedFields.join(", ")} WHERE id = $${index} RETURNING id, name, email, role_id`;
+        const updatedUser = await pool.query(query, updatedValues);
+
+        return res.json({
             message: "Utilisateur mis à jour avec succès",
-            user: updatedUser.rows[0],
+            user: updatedUser.rows[0]
         });
+
     } catch (err) {
         console.error("❌ Erreur lors de la mise à jour de l'utilisateur :", err);
-        res.status(500).json({ error: err.message });
+        return res.status(500).json({ error: "Erreur serveur lors de la mise à jour de l'utilisateur." });
     }
 };
+
+
 
 /**
  * ✅ Supprime un utilisateur sous certaines conditions :
