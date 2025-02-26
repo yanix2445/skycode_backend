@@ -93,13 +93,12 @@ const login = async (req, res) => {
 
 const logout = async (req, res) => {
     try {
-        console.log(`🔌 Tentative de déconnexion pour l'utilisateur ID: ${req.user?.id || "inconnu"}`);
-        console.log("🔍 Contenu de req.user :", req.user);
-
         if (!req.user || !req.user.id) {
-            console.log("⚠ Erreur : Token JWT invalide ou utilisateur non trouvé.");
+            console.log("❌ Erreur : Aucun utilisateur authentifié !");
             return res.status(401).json({ error: "Utilisateur non authentifié." });
         }
+
+        console.log(`🔌 Tentative de déconnexion pour l'utilisateur ID: ${req.user.id}`);
 
         await pool.query("DELETE FROM refresh_tokens WHERE user_id = $1", [req.user.id]);
 
