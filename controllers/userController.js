@@ -66,12 +66,12 @@ const updateUser = async (req, res) => {
         const targetUser = userResult.rows[0];
 
         // 🚨 Empêcher un admin de modifier un super_admin
-        if (requesterRole === 2 && targetUser.role_id === 1) {
-            return res.status(403).json({ error: "Un admin ne peut pas modifier un super_admin." });
-        }
-
-        if (requesterRoleId !== 1 && requesterId !== parseInt(id)) {
+        if (req.user.role_id !== 1 && req.user.id !== id) {
             return res.status(403).json({ error: "Vous ne pouvez modifier que votre propre profil." });
+        }
+        
+        if (req.user.role_id === 2 && targetUser.role_id === 1) {
+            return res.status(403).json({ error: "Un Admin ne peut pas modifier un Super Admin." });
         }
 
         // ✅ Mise à jour de l'utilisateur

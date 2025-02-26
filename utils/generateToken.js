@@ -16,20 +16,11 @@ const generateAccessToken = (user) => {
     );
 };
 
-const generateRefreshToken = async (userId) => {
-    const refreshToken = require("crypto").randomBytes(64).toString("hex");
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 90); // Expire dans 90 jours
-
-    console.log(`🔄 Création d'un refreshToken pour l'utilisateur ID: ${userId}, expiration: ${expiresAt}`);
-
-    await pool.query(
-        "INSERT INTO refresh_tokens (token, user_id, expires_at) VALUES ($1, $2, $3)",
-        [refreshToken, userId, expiresAt]
-    );
-
-    return refreshToken;
+// ✅ Générer un refreshToken sécurisé
+const generateRefreshToken = () => {
+    return crypto.randomBytes(64).toString("hex");
 };
+
 
 const cleanExpiredTokens = async () => {
     console.log("🧹 Début du nettoyage des refreshTokens expirés...");

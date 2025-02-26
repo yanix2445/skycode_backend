@@ -59,90 +59,81 @@ const signup = async (req, res) => {
 const login = async (req, res) => {
     try {
         const { email, password } = req.body;
-
-        // 🔍 Vérification de l'utilisateur
-        const result = await pool.query("SELECT id, email, password, role_id, role_alias, role_name FROM users WHERE email = $1", [email]);
+        const result = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
 
         if (result.rows.length === 0) {
             return res.status(401).json({ error: "Email ou mot de passe incorrect" });
         }
 
         const user = result.rows[0];
-
-        // 🔐 Vérification du mot de passe
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
             return res.status(401).json({ error: "Email ou mot de passe incorrect" });
         }
 
-        // 🔑 Génération des tokens
         const accessToken = generateAccessToken(user);
         const refreshToken = generateRefreshToken();
 
-        // ✅ On stocke le refreshToken dans `refresh_tokens` au lieu de `users`
+        // ✅ Supprimer l'ancien refreshToken s'il existe
+        await pool.query("DELETE FROM refresh_tokens WHERE user_id = $1", [user.id]);
+
+        // ✅ Insérer le nouveau refreshToken dans la table `refresh_tokens`
         await pool.query(
-            "INSERT INTO refresh_tokens (token, user_id, expires_at) VALUES ($1, $2, NOW() + INTERVAL '90 days')",
-            [refreshToken, user.id]
+            "INSERT INTO refresh_tokens (user_id, token) VALUES ($1, $2)", 
+            [user.id, refreshToken]
         );
 
-        console.log(`🔓 Connexion réussie pour ${user.email} (ID: ${user.id}, Role: ${user.role_name})`);
-
         res.json({ message: "Connexion réussie", accessToken, refreshToken });
+
     } catch (err) {
         console.error("❌ Erreur lors de la connexion :", err);
-        res.status(500).json({ error: "Erreur serveur lors de la connexion" });
+        res.status(500).json({ error: "Erreur serveur lors de la connexion." });
     }
 };
 
 const logout = async (req, res) => {
     try {
-        const { refreshToken } = req.body;
-        await pool.query("UPDATE users SET refresh_token = NULL WHERE refresh_token = $1", [refreshToken]);
+        // ✅ Supprimer le refreshToken du user
+        await pool.query("DELETE FROM refresh_tokens WHERE user_id = $1", [req.user.id]);
+
         res.json({ message: "Déconnexion réussie" });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.error("❌ Erreur lors de la déconnexion :", err);
+        res.status(500).json({ error: "Erreur serveur lors de la déconnexion." });
     }
 };
 
 
 const refreshToken = async (req, res) => {
     try {
-        const { refreshToken } = req.body;
-        console.log(`🔄 Tentative de rafraîchissement du token...`);
-
-        if (!refreshToken) {
-            return res.status(401).json({ error: "Refresh token requis" });
+        const { token } = req.body;
+        if (!token) {
+            return res.status(401).json({ error: "Token manquant." });
         }
 
-        // Vérifier si le Refresh Token existe en base
-        const result = await pool.query("SELECT * FROM users WHERE refresh_token = $1", [refreshToken]);
+        // ✅ Vérifier si le refreshToken existe dans la base de données
+        const result = await pool.query("SELECT user_id FROM refresh_tokens WHERE token = $1", [token]);
 
         if (result.rows.length === 0) {
-            return res.status(403).json({ error: "Refresh token invalide" });
+            return res.status(403).json({ error: "Refresh token invalide ou expiré." });
         }
 
-        const user = result.rows[0];
-        console.log(`✅ Refresh Token valide pour ${user.email} (ID: ${user.id})`);
+        const userId = result.rows[0].user_id;
 
-        // Générer un NOUVEAU JWT valide 7 jours
-        const newAccessToken = jwt.sign(
-            { id: user.id, email: user.email, role: user.role },
-            process.env.JWT_SECRET,
-            { expiresIn: "7d" }
-        );
+        // ✅ Récupérer les infos de l'utilisateur
+        const userResult = await pool.query("SELECT * FROM users WHERE id = $1", [userId]);
+        if (userResult.rows.length === 0) {
+            return res.status(403).json({ error: "Utilisateur introuvable." });
+        }
 
-        // Générer un NOUVEAU Refresh Token
-        const newRefreshToken = crypto.randomBytes(64).toString("hex");
+        const user = userResult.rows[0];
+        const newAccessToken = generateAccessToken(user);
 
-        // 🔥 Mettre à jour le Refresh Token en base
-        await pool.query("UPDATE users SET refresh_token = $1 WHERE id = $2", [newRefreshToken, user.id]);
+        res.json({ accessToken: newAccessToken });
 
-        console.log(`🔄 Nouveau AccessToken + RefreshToken générés pour ${user.email}`);
-
-        res.json({ accessToken: newAccessToken, refreshToken: newRefreshToken });
     } catch (err) {
         console.error("❌ Erreur lors du rafraîchissement du token :", err);
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: "Erreur serveur lors du rafraîchissement du token." });
     }
 };
 
