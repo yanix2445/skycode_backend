@@ -122,7 +122,8 @@ const refreshToken = async (req, res) => {
             "SELECT * FROM refresh_tokens WHERE token = $1 AND expires_at > NOW()", 
             [refreshToken]
         );
-
+        console.log("🔍 Token en base:", tokenResult.rows[0]);
+        
         if (tokenResult.rows.length === 0) {
             return res.status(403).json({ error: "Token invalide ou expiré." });
         }
