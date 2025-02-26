@@ -1,6 +1,7 @@
 const express = require("express");
 const { signup, login, logout, refreshToken , changePassword } = require("../controllers/authController");
 const { authenticateToken } = require("../middlewares/authMiddleware");
+const pool = require("../config/database"); // Assure-toi que c'est bien importé
 
 const router = express.Router();
 
