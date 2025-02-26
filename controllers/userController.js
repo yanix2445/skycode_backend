@@ -33,7 +33,7 @@ const getUserById = async (req, res) => {
 
 const updateUser = async (req, res) => {
     try {
-        const { id } = req.params; // ID de l'utilisateur ciblé
+        const { id } = req.params; // ID de l'utilisateur à modifier
         const { name, email, password } = req.body;
         const requesterId = req.user.id; // ID de celui qui fait la requête
         const requesterRole = req.user.role_id; // Rôle de celui qui fait la requête
@@ -57,18 +57,26 @@ const updateUser = async (req, res) => {
         console.log(`📌 L'utilisateur ciblé a le rôle: ${targetUser.role_id}`);
 
         // 🔒 Règles de modification :
+
+        // 1️⃣ **Un utilisateur ne peut modifier que son propre profil.**
         if (requesterId !== targetUser.id && requesterRole !== 1) {
             console.log("⛔ [ERREUR] Un utilisateur ne peut modifier que son propre profil !");
             return res.status(403).json({ error: "Vous ne pouvez modifier que votre propre profil." });
         }
 
-        // 🚨 Un Admin ne peut pas modifier un Super Admin
+        // 2️⃣ **Un Admin ne peut pas modifier un Super Admin.**
         if (requesterRole === 2 && targetUser.role_id === 1) {
             console.log("⛔ [ERREUR] Un Admin ne peut pas modifier un Super Admin !");
             return res.status(403).json({ error: "Un Admin ne peut pas modifier un Super Admin." });
         }
 
-        // 🚨 Vérification spécifique pour Registered Users (rôle 8)
+        // 3️⃣ **Un Super Admin ne peut pas modifier un autre Super Admin.**
+        if (requesterRole === 1 && targetUser.role_id === 1 && requesterId !== targetUser.id) {
+            console.log("⛔ [ERREUR] Un Super Admin ne peut pas modifier un autre Super Admin !");
+            return res.status(403).json({ error: "Un Super Admin ne peut pas modifier un autre Super Admin." });
+        }
+
+        // 4️⃣ **Un Registered User (role_id = 8) peut modifier uniquement son propre profil.**
         if (requesterRole === 8 && requesterId !== targetUser.id) {
             console.log("⛔ [ERREUR] Un Registered User ne peut modifier que son propre profil !");
             return res.status(403).json({ error: "Accès refusé. Vous ne pouvez modifier que votre propre profil." });
