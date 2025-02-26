@@ -28,6 +28,7 @@ const getUserById = async (req, res) => {
 };
 
 // ✅ Modifier un utilisateur (seulement accessible par admin et super_admin)
+
 const updateUser = async (req, res) => {
     try {
         const { id } = req.params; // ID de l'utilisateur ciblé
@@ -52,25 +53,13 @@ const updateUser = async (req, res) => {
 
         console.log(`📌 L'utilisateur ciblé a le rôle: ${targetUser.role_id}`);
 
-        // 🚨 **Empêcher un utilisateur de modifier un autre profil (sauf Super Admin)**
-        if (requesterId !== targetUser.id && requesterRole !== 1) {
+        // 🚨 **Restriction d'accès**
+        if (requesterId !== targetUser.id) {
             console.log("⛔ Accès refusé: Un utilisateur ne peut modifier que son propre profil !");
             return res.status(403).json({ error: "Vous ne pouvez modifier que votre propre profil." });
         }
 
-        // 🚨 **Un Admin (2) ne peut pas modifier un Super Admin (1)**
-        if (requesterRole === 2 && targetUser.role_id === 1) {
-            console.log("⛔ Accès refusé: Un Admin ne peut pas modifier un Super Admin !");
-            return res.status(403).json({ error: "Un Admin ne peut pas modifier un Super Admin." });
-        }
-
-        // 🚨 **Un Super Admin ne peut pas modifier son propre profil ici**
-        if (requesterId === targetUser.id && requesterRole === 1) {
-            console.log("⛔ Accès refusé: Un Super Admin ne peut pas modifier son propre profil ici.");
-            return res.status(403).json({ error: "Un Super Admin ne peut pas modifier son propre profil ici." });
-        }
-
-        // 🔄 **Construction de la requête SQL pour mettre à jour uniquement les champs envoyés**
+        // ✅ **Autoriser les utilisateurs à modifier leur propre profil**
         let updatedFields = [];
         let updatedValues = [];
         let index = 1;
@@ -94,15 +83,14 @@ const updateUser = async (req, res) => {
             index++;
         }
 
-        // ✅ **Si aucun champ à mettre à jour, erreur**
         if (updatedFields.length === 0) {
             console.log("⛔ Aucune donnée valide à mettre à jour !");
             return res.status(400).json({ error: "Aucune donnée à mettre à jour." });
         }
 
-        updatedValues.push(id); // Ajout de l'ID pour la condition WHERE
+        updatedValues.push(id);
 
-        // ✅ **Exécution de la requête SQL sécurisée**
+        // ✅ **Exécution de la requête SQL**
         const query = `UPDATE users SET ${updatedFields.join(", ")} WHERE id = $${index} RETURNING id, name, email, role_id`;
         const updatedUser = await pool.query(query, updatedValues);
 
@@ -119,12 +107,9 @@ const updateUser = async (req, res) => {
 };
 
 
-/**
- * ✅ Supprime un utilisateur sous certaines conditions :
- * - Un `super_admin` peut supprimer n'importe qui.
- * - Un `admin` peut supprimer un utilisateur, mais seulement d'un rôle inférieur.
- * - Un utilisateur ne peut pas se supprimer lui-même.
- */
+
+
+
 const deleteUser = async (req, res) => {
     try {
         const { id } = req.params; // ID de l'utilisateur à supprimer
