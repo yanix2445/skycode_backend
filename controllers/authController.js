@@ -59,26 +59,38 @@ const signup = async (req, res) => {
 const login = async (req, res) => {
     try {
         const { email, password } = req.body;
-        const result = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
+
+        // 🔍 Vérification de l'utilisateur
+        const result = await pool.query("SELECT id, email, password, role_id, role_alias, role_name FROM users WHERE email = $1", [email]);
 
         if (result.rows.length === 0) {
             return res.status(401).json({ error: "Email ou mot de passe incorrect" });
         }
 
         const user = result.rows[0];
+
+        // 🔐 Vérification du mot de passe
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
             return res.status(401).json({ error: "Email ou mot de passe incorrect" });
         }
 
+        // 🔑 Génération des tokens
         const accessToken = generateAccessToken(user);
         const refreshToken = generateRefreshToken();
 
-        await pool.query("UPDATE users SET refresh_token = $1 WHERE id = $2", [refreshToken, user.id]);
+        // ✅ On stocke le refreshToken dans `refresh_tokens` au lieu de `users`
+        await pool.query(
+            "INSERT INTO refresh_tokens (token, user_id, expires_at) VALUES ($1, $2, NOW() + INTERVAL '90 days')",
+            [refreshToken, user.id]
+        );
+
+        console.log(`🔓 Connexion réussie pour ${user.email} (ID: ${user.id}, Role: ${user.role_name})`);
 
         res.json({ message: "Connexion réussie", accessToken, refreshToken });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.error("❌ Erreur lors de la connexion :", err);
+        res.status(500).json({ error: "Erreur serveur lors de la connexion" });
     }
 };
 
