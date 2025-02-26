@@ -5,13 +5,16 @@ const checkRole = require("../middlewares/checkRole");
 
 const router = express.Router();
 
-// 🔹 Permet aux utilisateurs authentifiés de récupérer leur propre profil
+// ✅ Récupérer tous les utilisateurs (Réservé aux Admins et Super Admins)
+router.get("/users", authenticateToken, checkRole([2, 1]), getAllUsers);
+
+// ✅ Récupérer un utilisateur par son ID
 router.get("/users/:id", authenticateToken, getUserById);
 
-// 🔹 Permet aux utilisateurs authentifiés de modifier leur propre profil
+// ✅ Modifier son propre profil OU un Admin/Super Admin peut modifier d'autres utilisateurs
 router.put("/users/:id", authenticateToken, updateUser);
 
-// 🔹 Uniquement les Admins et Super Admins peuvent supprimer un utilisateur
+// ✅ Supprimer un utilisateur (Seuls les Admins et Super Admins peuvent supprimer)
 router.delete("/users/:id", authenticateToken, checkRole([2, 1]), deleteUser);
 
 module.exports = router;
