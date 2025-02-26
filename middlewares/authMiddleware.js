@@ -6,17 +6,17 @@ const authenticateToken = (req, res, next) => {
     const token = authHeader && authHeader.split(" ")[1];
 
     if (!token) {
-        console.log("⚠ Aucun token fourni.");
-        return res.status(401).json({ error: "Token manquant." });
+        console.log("🚨 Aucun token fourni !");
+        return res.status(401).json({ error: "Accès refusé : Aucun token fourni." });
     }
 
     jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
         if (err) {
-            console.log("⚠ Token invalide ou expiré.");
-            return res.status(403).json({ error: "Token invalide ou expiré." });
+            console.log("🚨 JWT invalide !");
+            return res.status(403).json({ error: "Accès refusé : Token invalide." });
         }
 
-        console.log(`✅ Token valide - Utilisateur ID: ${user.id}`);
+        console.log(`🔑 JWT validé ! Utilisateur ID: ${user.id}`);
         req.user = user;
         next();
     });
