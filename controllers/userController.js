@@ -30,15 +30,16 @@ const getUserById = async (req, res) => {
 // ✅ Modifier un utilisateur (seulement accessible par admin et super_admin)
 
 
+
 const updateUser = async (req, res) => {
     try {
         const { id } = req.params; // ID de l'utilisateur ciblé
         const { name, email, password } = req.body;
-        const requesterId = req.user.id; // ID de l'utilisateur effectuant la requête
-        const requesterRole = req.user.role_id; // Rôle de l'utilisateur effectuant la requête
+        const requesterId = req.user.id; // ID de celui qui fait la requête
+        const requesterRole = req.user.role_id; // Rôle de celui qui fait la requête
 
         console.log("=====================================");
-        console.log(`🔍 [DEBUT] Tentative de modification de l'utilisateur ${id} par ${requesterId}`);
+        console.log(`🔍 Tentative de modification de l'utilisateur ${id} par ${requesterId}`);
         console.log(`📌 Rôle de l'utilisateur effectuant la requête: ${requesterRole}`);
         console.log(`📌 ID de l'utilisateur effectuant la requête: ${requesterId}`);
         console.log(`📌 ID de l'utilisateur ciblé: ${id}`);
@@ -55,10 +56,22 @@ const updateUser = async (req, res) => {
         const targetUser = userResult.rows[0];
         console.log(`📌 L'utilisateur ciblé a le rôle: ${targetUser.role_id}`);
 
-        // 🚨 Vérifier que l'utilisateur ne tente pas de modifier un autre profil (sauf Super Admin)
-        if (requesterId !== targetUser.id) {
+        // 🔒 Règles de modification :
+        if (requesterId !== targetUser.id && requesterRole !== 1) {
             console.log("⛔ [ERREUR] Un utilisateur ne peut modifier que son propre profil !");
             return res.status(403).json({ error: "Vous ne pouvez modifier que votre propre profil." });
+        }
+
+        // 🚨 Un Admin ne peut pas modifier un Super Admin
+        if (requesterRole === 2 && targetUser.role_id === 1) {
+            console.log("⛔ [ERREUR] Un Admin ne peut pas modifier un Super Admin !");
+            return res.status(403).json({ error: "Un Admin ne peut pas modifier un Super Admin." });
+        }
+
+        // 🚨 Vérification spécifique pour Registered Users (rôle 8)
+        if (requesterRole === 8 && requesterId !== targetUser.id) {
+            console.log("⛔ [ERREUR] Un Registered User ne peut modifier que son propre profil !");
+            return res.status(403).json({ error: "Accès refusé. Vous ne pouvez modifier que votre propre profil." });
         }
 
         console.log("✅ [CHECK] L'utilisateur a bien le droit de modifier son profil.");
