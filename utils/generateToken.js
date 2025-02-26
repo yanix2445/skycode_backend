@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const pool = require("../config/db"); // Assure-toi que c'est bien importé
+const pool = require("../config/database"); // Assure-toi que c'est bien importé
 
 const generateAccessToken = (user) => {
     console.log(`🔑 Génération d'un accessToken pour l'utilisateur ${user.email} (ID: ${user.id}, Rôle: ${user.role_name})`);
