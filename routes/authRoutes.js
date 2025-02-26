@@ -20,5 +20,13 @@ router.get("/debug/tokens", authenticateToken, async (req, res) => {
       res.status(500).json({ error: "Erreur serveur lors de la récupération des tokens." });
   }
 });
+// ✅ Route de debug pour voir `req.user`
+router.get("/debug/token", authenticateToken, (req, res) => {
+  if (!req.user) {
+      return res.status(401).json({ error: "Utilisateur non authentifié." });
+  }
+  res.json({ message: "Token valide", user: req.user });
+});
+
 
 module.exports = router;
