@@ -15,7 +15,10 @@ const connectDB = async () => {
   try {
     const client = await pool.connect();
     const res = await client.query("SELECT NOW()"); // Test rapide
-    console.log("✅ Connexion à PostgreSQL réussie ! Heure actuelle :", res.rows[0].now);
+    console.log(
+      "✅ Connexion à PostgreSQL réussie ! Heure actuelle :",
+      res.rows[0].now
+    );
     client.release(); // Libère la connexion après le test
   } catch (err) {
     console.error("❌ Erreur de connexion à PostgreSQL :", err.message);
