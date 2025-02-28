@@ -16,13 +16,16 @@ app.use(express.json());
 // 🔗 Montage des routes
 app.use("/auth", authRoutes);
 app.use("/users", userRoutes); // Assure-toi que cette ligne est bien présente
-
+// Route de base pour tester le serveur
+app.get("/", (req, res) => {
+  res.json({ message: "Bienvenue sur l'API !" });
+});
 // Gestion des erreurs 404
 app.use((req, res) => {
-    res.status(404).json({ error: "Route non trouvée" });
+  res.status(404).json({ error: "Route non trouvée" });
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`✅ Serveur en cours d'exécution sur le port ${PORT}`);
+  console.log(`✅ Serveur en cours d'exécution sur le port ${PORT}`);
 });
