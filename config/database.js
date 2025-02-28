@@ -2,13 +2,13 @@ const { Pool } = require("pg");
 require("dotenv").config();
 
 // Création d'un pool de connexions
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: {
-    require: true,
-    rejectUnauthorized: false, // Évite les erreurs SSL avec Supabase
-  },
+  ssl: { rejectUnauthorized: false }, // 🔥 FORCER LE SSL 🔥
 });
+
+module.exports = pool;
 
 // Fonction pour tester la connexion
 const connectDB = async () => {
