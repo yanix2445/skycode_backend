@@ -79,7 +79,7 @@ const login = async (req, res) => {
 
         // ✅ Insérer le nouveau refreshToken
         await pool.query(
-            "INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES ($1, $2, NOW() + INTERVAL '90 days')", 
+            "INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES ($1, $2, NOW() + INTERVAL '90 days')",
             [user.id, refreshToken]
         );
 
@@ -87,7 +87,7 @@ const login = async (req, res) => {
 
     } catch (err) {
         console.error("❌ Erreur lors de la connexion :", err);
-        res.status(500).json({ error: "Erreur serveur lors de la connexion." });
+        res.status(500).json({ error: "Erreur serveur lors de la conneion." });
     }
 };
 
@@ -95,7 +95,7 @@ const logout = async (req, res) => {
     try {
         console.log(`🔌 Tentative de déconnexion pour l'utilisateur ID: ${req.user?.id || "inconnu"}`);
         console.log("🔍 Contenu de req.user :", req.user);
-        
+
         if (!req.user || !req.user.id) {
             return res.status(401).json({ error: "Utilisateur non authentifié." });
         }
