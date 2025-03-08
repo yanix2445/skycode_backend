@@ -86,7 +86,7 @@ const login = async (req, res) => {
         res.json({ message: "Connexion réussie", accessToken, refreshToken });
 
     } catch (err) {
-        console.error("❌ Erreur lors de la connexion :", err);
+        console.error(" Erreur lors de la connexion :", err);
         res.status(500).json({ error: "Erreur serveur lors de la conneion." });
     }
 };
