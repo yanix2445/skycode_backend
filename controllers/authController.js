@@ -146,7 +146,7 @@ const refreshToken = async (req, res) => {
         const userResult = await pool.query("SELECT * FROM users WHERE id = $1", [tokenInDb.user_id]);
 
         if (userResult.rows.length === 0) {
-            console.log("❌ Utilisateur introuvable !");
+            console.log(" Utilisateur introuvable !");
             return res.status(403).json({ error: "Utilisateur introuvable." });
         }
 
@@ -159,7 +159,7 @@ const refreshToken = async (req, res) => {
         return res.json({ accessToken: newAccessToken });
 
     } catch (err) {
-        console.error("❌ Erreur lors du rafraîchissement du token :", err);
+        console.error(" Erreur lors du rafraîchissement du token :", err);
         return res.status(500).json({ error: "Erreur serveur lors du rafraîchissement du token." });
     }
 };
