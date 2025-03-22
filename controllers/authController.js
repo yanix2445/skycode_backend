@@ -105,7 +105,7 @@ const logout = async (req, res) => {
 
         res.json({ message: "Déconnexion réussie" });
     } catch (err) {
-        console.error("❌ Erreur lors de la déconnexion :", err);
+        console.error(" Erreur lors de la déconnexion :", err);
         res.status(500).json({ error: "Erreur serveur lors de la déconnexion." });
     }
 };
