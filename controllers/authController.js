@@ -192,7 +192,7 @@ const changePassword = async (req, res) => {
         // Mettre à jour le mot de passe
         await pool.query("UPDATE users SET password = $1 WHERE id = $2", [hashedPassword, user.id]);
 
-        console.log(`✅ Mot de passe changé avec succès pour ${email} (Toutes les sessions ont été invalidées)`);
+        console.log(` Mot de passe changé avec succès pour ${email} (Toutes les sessions ont été invalidées)`);
 
         res.json({ message: "Mot de passe changé avec succès. Reconnectez-vous." });
     } catch (err) {
